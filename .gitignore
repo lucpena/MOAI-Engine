@@ -1,0 +1,82 @@
+# Visual Studio cache files
+.vs/
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.sdf
+*.opensdf
+*.sln.docstates
+*.cachefile
+*.log
+*.tlog
+[Bb]in
+[Dd]ebug*/
+[Rr]elease*/
+x64/
+ipch/
+*.bak
+*.pdb
+*.obj
+*.ilk
+*.msi
+*.vsix
+*.dotnet-diagnostic.xml
+
+# Visual Studio code files
+.vscode/
+*.sln.ide
+*.suo
+*.csproj.user
+*.user
+*.sln.ide-shm
+*.sln.ide-wal
+
+# NuGet packages
+packages/
+*.nupkg
+*.paket.*
+paket-files/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+build/
+msbuild.log
+msbuild.err
+
+# Resharper files
+_ReSharper.*/
+
+# Visual Studio IntelliSense
+*.vssettings
+*.vsps
+
+# Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+
+# Installshield output folder
+[Ee]xpress/
+
+# DocFX output folder
+obj/docfx/
+
+# Unity specific
+Library/
+Temp/
+UserSettings/
+
+# Rider
+.idea/
+
+# Mac specific
+.DS_Store
+*.swp
+*~
