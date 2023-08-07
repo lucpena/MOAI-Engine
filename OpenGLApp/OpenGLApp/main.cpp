@@ -1,39 +1,52 @@
 #include <iostream>
 #include <string.h>
+#include <cmath>
+#include <vector>
 
 //#define GLEW_STATIC
 #include <GL\glew.h>
 #include <GLFW\glfw3.h>
 
+// Use glm::mat4 model(1.0f);
+#include <glm\glm.hpp>
+#include <glm\gtc\matrix_transform.hpp>
+#include <glm\gtc\type_ptr.hpp>
+
+#include "Mesh.h"
+
 using std::cout;
 using std::endl;
 using std::cerr;
+using std::vector;
 
-const GLint WIDTH = 800, HEIGHT = 600;
+const GLint WIDTH = 1280, HEIGHT = 720;
+const float toRadians = 3.14159265f / 180.0f;
 
-/***********************************************************
- 	VAO => Vertex Array Objects
-	VBO => Vertex Buffer Object
+GLuint shader, uniformModel, uniformProjection;
 
-	VAO defines WHAT the data a vertex has.
-	VBO defines the DATA itself
+bool direction = true;
+float triOffset = 0.0f;
+float triMaxOffset = 0.5f;
+float triIncrement = 0.0005f;
 
-***********************************************************/
-GLuint VAO, VBO;
-/**********************************************************/
+float currentAngle = 0.0f;
 
-GLuint shader;
+vector<Mesh*> meshList;
 
 // Vertex Shader
-static const char* vShader = " \n\
-#version 330 \n\
- \n\
-layout(location = 0) in vec3 pos; \n\
- \n\
-void main() { \n\
- \n\
-	gl_Position = vec4(0.5 * pos.x, 0.5 * pos.y, 0.5 * pos.z, 1.0); \n\
- \n\
+static const char *vShader = "                                                \n\
+#version 330                                                                  \n\
+                                                                              \n\
+layout (location = 0) in vec3 pos;											  \n\
+out vec4 vColor;		            										  \n\
+                                                                              \n\
+uniform mat4 model;                                                           \n\
+uniform mat4 projection;                                                       \n\
+                                                                              \n\
+void main()                                                                   \n\
+{                                                                             \n\
+    gl_Position = projection * model * vec4(pos, 1.0);		  				  \n\
+	vColor = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);							  \n\
 }";
 
 // Fragment Shader
@@ -41,10 +54,12 @@ static const char* fShader = " \n\
 #version 330  \n\
  \n\
 out vec4 colour;  \n\
- \n\
+\n\
+in vec4 vColor; \n\
+\n\
 void main() {  \n\
  \n\
-	colour = vec4( 1.0, 1.0, 0.0, 1.0); \n\
+	colour = vColor; \n\
  \n\
 }";
 
@@ -140,45 +155,38 @@ void CompileShaders()
 
 	// Shader compilation and linking successful
 	// The shader program is now ready for use in rendering.
+
+    // Getting the variables from the Shaders
+    uniformModel = glGetUniformLocation(shader, "model");
+    uniformProjection = glGetUniformLocation(shader, "projection");
 }
 
 // Function to create a simple triangle in OpenGL
 void CreateTriangle()
 {
-	// Define the vertex data for the triangle
-	GLfloat vertices[] = {
-		-1.0f, -1.0f, 0.0f, // Vertex 1: x, y, z coordinates
-		1.0f, -1.0f, 0.0f,	// Vertex 2: x, y, z coordinates
-		0.0f, 1.0f, 0.0f	// Vertex 3: x, y, z coordinates
+	uint32_t indices[] = 
+	{
+		0, 3, 1,
+		1, 3, 2,
+		2, 3, 0,
+		0, 1, 2
 	};
 
-	// Allocates GPU memory space for 1 Vertex Array object (VAO)
-	glGenVertexArrays(1, &VAO);
+	// Define the vertex data for the triangle
+	GLfloat vertices[] = {
+		-1.0f, -1.0f, 0.0f,
+		 0.0f, -1.0f, 1.0f,
+		 1.0f, -1.0f, 0.0f,
+		 0.0f,  1.0f, 0.0f	
+	};
 
-	// Bind the newly created VAO, all subsequent operations will be performed on this VAO
-	glBindVertexArray(VAO);
+    Mesh* triangleMesh = new Mesh();
+    triangleMesh->CreateMesh(vertices, indices, 12, 12);
+    meshList.push_back(triangleMesh);
 
-	// Creates a Vertex Buffer Object (VBO) inside the VAO to store the vertex data
-	glGenBuffers(1, &VBO);
-
-	// Bind the VBO to the GL_ARRAY_BUFFER target
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-	// Transfer the vertex data to the GPU memory
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	// Define the layout of the vertex data within the VBO
-	// Attribute 0 (index 0) corresponds to the position attribute of the vertex shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-	// Enable the vertex attribute at index 0 (position attribute)
-	glEnableVertexAttribArray(0);
-
-	// Unbind the VBO (not necessary, but good practice to unbind when done)
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// Unbind the VAO (not necessary, but good practice to unbind when done)
-	glBindVertexArray(0);
+    Mesh *triangleMesh2 = new Mesh();
+    triangleMesh2->CreateMesh(vertices, indices, 12, 12);
+    meshList.push_back(triangleMesh2);
 }
 
 // Pressing a button
@@ -232,6 +240,9 @@ int main()
 		return -1;
 	}
 
+	// Enable Depth Buffer
+	glEnable(GL_DEPTH_TEST);
+
 	// Set the viewport dimensions to match the window size
 	glViewport(0, 0, WIDTH, HEIGHT);
 
@@ -239,29 +250,66 @@ int main()
 	CreateTriangle();
 	CompileShaders();
 
+    // Setting Projection matrix
+    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WIDTH/(GLfloat)HEIGHT, 0.1f, 500.0f);
+
 	// Render loop: keeps the window open until the user closes it
 	while (!glfwWindowShouldClose(window))
 	{
 		// Poll for and process events like keyboard input
 		glfwPollEvents();
 
+		if( direction )
+		{
+			triOffset += triIncrement;
+		} else 
+		{
+			triOffset -= triIncrement;
+		}
+
+		if( abs(triOffset) >= triMaxOffset ) 
+		{
+			direction = !direction;
+		}
+
+		currentAngle += 0.01f;
+		if( currentAngle >= 360 )
+		{
+			currentAngle = 0;
+		}
+
 		// Clear the screen with a specific color
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Use the shader program for rendering
 		glUseProgram(shader);
 
-		// Bind the vertex array object containing the triangle data
-		glBindVertexArray(VAO);
+        // Defining the model matrix for the first piramyd
+		glm::mat4 model(1.0f);
+		model = glm::translate(model, glm::vec3(1.0f, 0.0f, -4.0f));
 
-		// Draw the triangle using OpenGL draw call
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.5f, 1.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
 
-		// Unbind the vertex array object
-		glBindVertexArray(0);
+        // Attach the Model matrix
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 
-		// Stop using the shader program
+        // Attach the Projection Matrix 
+        glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+
+        // Rendering the mesh
+        meshList[0]->RenderMesh();
+
+        // Defining the model matrix for the second piramyd
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -4.0f));
+        model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.5f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        meshList[1]->RenderMesh();
+
+        // Stop using the shader program
 		glUseProgram(0);
 
 		// Swap the front and back buffers to display the rendered frame
