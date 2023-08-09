@@ -15,13 +15,14 @@
 #include "Mesh.h"
 #include "Shader.h"
 #include "Window.h"
+#include "Camera.h"
 
-//-------------------------------------------------------------------------
-
+using std::cerr;
 using std::cout;
 using std::endl;
-using std::cerr;
 using std::vector;
+
+//-------------------------------------------------------------------------
 
 const float toRadians = 3.14159265f / 180.0f;
 
@@ -29,14 +30,18 @@ bool direction = true;
 float triOffset = 0.0f;
 float triMaxOffset = 0.5f;
 float triIncrement = 0.0005f;
-
 float currentAngle = 0.0f;
 
-
-
 Window mainWindow;
+Camera camera;
+
+GLfloat deltaTime = 0.0f;
+GLfloat lastTime = 0.0f;
+
 vector<Mesh*> meshList;
 vector<Shader> shaderList;
+
+//---------------------------------------------------------------------------
 
 // Vertex Shader
 static const char *vShader = "Shaders/shader.vert";
@@ -79,19 +84,9 @@ void CreateShaders()
 	shaderList.push_back(*_shader);
 }
 
-// Pressing a button
-void KeyCallback( GLFWwindow* window, int key, int scancode, int action, int mode )
-{
-	if( key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
-	{
-		glfwSetWindowShouldClose( window, GL_TRUE );
-	}
-}
-
 // Main function for the OpenGL application
 int main()
 {
-
 	// Create the main window
 	mainWindow = Window(1280, 720);
 	mainWindow.Initialise();
@@ -100,19 +95,28 @@ int main()
 	CreateObjects();
 	CreateShaders();
 
-	GLuint uniformProjection = 0, uniformModel = 0;
+	// Define the Camera
+	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 5.0f, 0.5f);
 
-    // Setting Projection matrix
-    glm::mat4 projection = glm::perspective(45.0f, 
-										   (GLfloat)mainWindow.getBufferWidth()/(GLfloat)mainWindow.getBufferHeight(), 
-										   0.1f, 
-										   500.0f);
+	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
+
+	// Setting Projection matrix
+	glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
 
 	// Render loop: keeps the window open until the user closes it
 	while (!mainWindow.getShouldClose())
 	{
-		// Poll for and process events like keyboard input
+		// Getting DELTA TIME
+		GLfloat now = glfwGetTime();
+		deltaTime = now - lastTime;
+		lastTime = now;
+
+		// Get + Handle User Input
 		glfwPollEvents();
+
+		// Handling the Camera
+		camera.keyControl(mainWindow.getsKeys(), deltaTime);
+		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
 		if( direction )
 		{
@@ -141,11 +145,13 @@ int main()
 		shaderList[0].UseShader();
 		uniformModel = shaderList[0].GetModelLocation();
 		uniformProjection = shaderList[0].GetProjectionLocation();
+		uniformView = shaderList[0].GetViewLocation();
 
 		// Defining the model matrix for the first piramyd
 		glm::mat4 model(1.0f);
-		model = glm::translate(model, glm::vec3(1.0f, 0.0f, -4.0f));
 
+		// Translate, Rotate and Scale
+		model = glm::translate(model, glm::vec3(1.0f, 0.0f, -4.0f));
 		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.5f, 1.0f, 0.0f));
 		model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
 
@@ -155,7 +161,10 @@ int main()
         // Attach the Projection Matrix 
         glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
 
-        // Rendering the mesh
+		// Attach the View Matrix
+		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
+
+		// Rendering the mesh
         meshList[0]->RenderMesh();
 
         // Defining the model matrix for the second piramyd
