@@ -7,13 +7,18 @@
 
 #include <GL\glew.h>
 
+using std::string;
+
 class Shader
 {
-private:
+public:
 
     Shader();
-    
-    void CreateFromString(const char* vertexCode, const char* fragmentCode);
+
+    void CreateFromString(const char *vertexCode, const char *fragmentCode);
+    void CreateFromFile(const char *vertexLocation, const char *fragmentLocation);
+
+    string ReadFile(const char* fileLocation);
 
     GLuint GetProjectionLocation();
     GLuint GetModelLocation();
@@ -23,7 +28,7 @@ private:
 
     ~Shader();
 
-public:
+private:
 
     GLuint shaderID, uniformProjection, uniformModel;
 
