@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 // C++ libraries
 #include <iostream>
 #include <string.h>
@@ -16,6 +18,8 @@
 #include "Shader.h"
 #include "Window.h"
 #include "Camera.h"
+#include "Texture.h"
+#include "Light.h"
 
 using std::cerr;
 using std::cout;
@@ -41,6 +45,10 @@ GLfloat lastTime = 0.0f;
 vector<Mesh*> meshList;
 vector<Shader> shaderList;
 
+Texture obamiumTexture;
+
+Light ambientLight;
+
 //---------------------------------------------------------------------------
 
 // Vertex Shader
@@ -48,6 +56,49 @@ static const char *vShader = "Shaders/shader.vert";
 
 // Fragment Shader
 static const char* fShader = "Shaders/shader.frag";
+
+void CalcAverageNormals(uint32_t* indices, uint32_t indiceCount, GLfloat* vertices, uint32_t verticesCount, uint32_t vLength, uint32_t normalOffset)
+{
+	for( size_t i = 0; i < indiceCount; i += 3 )
+	{
+		uint32_t in0 = indices[i] * vLength;
+        uint32_t in1 = indices[i + 1] * vLength;
+        uint32_t in2 = indices[i + 2] * vLength;
+
+        // The Vector product of two vectors, a and b, is denoted by a × b. Its resultant vector is perpendicular to a and b, in other words, the NORMAL!!! UwU
+        glm::vec3 v1(vertices[in1] - vertices[in0], vertices[in1 + 1] - vertices[in0 + 1], vertices[in1 + 2] - vertices[in0 + 2]);
+        glm::vec3 v2(vertices[in2] - vertices[in0], vertices[in2 + 1] - vertices[in0 + 1], vertices[in2 + 2] - vertices[in0 + 2]);
+        glm::vec3 normal = glm::cross(v1, v2);
+        normal = glm::normalize(normal);
+
+        in0 += normalOffset;
+        in1 += normalOffset;
+        in2 += normalOffset;
+
+        vertices[in0 + 0] += normal.x;
+        vertices[in0 + 1] += normal.y;
+        vertices[in0 + 2] += normal.z;
+
+        vertices[in1 + 0] += normal.x;
+        vertices[in1 + 1] += normal.y;
+        vertices[in1 + 2] += normal.z;
+
+        vertices[in2 + 0] += normal.x;
+        vertices[in2 + 1] += normal.y;
+        vertices[in2 + 2] += normal.z;
+    }
+
+    for( size_t i = 0; i < verticesCount / vLength; i++  )
+    {
+        uint32_t nOffeset = i * vLength + normalOffset;
+        glm::vec3 vec(vertices[nOffeset], vertices[nOffeset + 1], vertices[nOffeset + 2]);
+        vec = glm::normalize(vec);
+
+        vertices[nOffeset + 0] = vec.x;
+        vertices[nOffeset + 1] = vec.y;
+        vertices[nOffeset + 2] = vec.z;
+    }
+}
 
 // Function to create a simple triangle in OpenGL
 void CreateObjects()
@@ -61,19 +112,23 @@ void CreateObjects()
 	};
 
 	// Define the vertex data for the triangle
-	GLfloat vertices[] = {
-		-1.0f, -1.0f, 0.0f,
-		 0.0f, -1.0f, 1.0f,
-		 1.0f, -1.0f, 0.0f,
-		 0.0f,  1.0f, 0.0f	
+	GLfloat vertices[] = 
+	{
+	//   X      Y     Z      U     V    nX    nY    nZ
+		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 2.0f, 0.5f, 0.0f,  0.0f, 0.0f, 0.0f,
+		1.0f, -1.0f, 0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.5f, 1.0f,   0.0f, 0.0f, 0.0f
 	};
 
-    Mesh* triangleMesh = new Mesh();
-    triangleMesh->CreateMesh(vertices, indices, 12, 12);
+    CalcAverageNormals(indices, 12, vertices, 32, 8, 5);
+
+	Mesh* triangleMesh = new Mesh();//    vertices, indices
+    triangleMesh->CreateMesh(vertices, indices, 32, 12);
     meshList.push_back(triangleMesh);
 
-    Mesh *triangleMesh2 = new Mesh();
-    triangleMesh2->CreateMesh(vertices, indices, 12, 12);
+    Mesh *triangleMesh2 = new Mesh();//    vertices, indices
+    triangleMesh2->CreateMesh(vertices, indices, 32, 12);
     meshList.push_back(triangleMesh2);
 }
 
@@ -96,9 +151,23 @@ int main()
 	CreateShaders();
 
 	// Define the Camera
-	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 5.0f, 0.5f);
+	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 5.0f, 0.2f);
 
+	// Load the Texture
+	obamiumTexture = Texture("Assets/Textures/obamium.png");
+	obamiumTexture.LoadTexture();
+
+	// Setting up Ambient Light
+	ambientLight = Light(1.0f, 1.0f, 1.0f, 0.5f,		// Ambient Light
+					     2.0f, -1.0f, -2.0f, 1.0f);		// Diffuse Light
+
+	// Getting the Uniforms (Shaders variables)
+	// The camera matrices from the shaders
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
+	
+	// Light uniforms
+	GLuint uniformAmbientIntensity = 0, uniformAmbientColour = 0;
+    GLuint uniformDirection = 0, uniformDiffuseIntensity = 0;
 
 	// Setting Projection matrix
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
@@ -146,13 +215,21 @@ int main()
 		uniformModel = shaderList[0].GetModelLocation();
 		uniformProjection = shaderList[0].GetProjectionLocation();
 		uniformView = shaderList[0].GetViewLocation();
+		uniformAmbientColour = shaderList[0].GetAmbientColourLocation();
+		uniformAmbientIntensity = shaderList[0].GetAmbientIntensityLocation();
+        uniformDirection = shaderList[0].GetDirectionLocation();
+        uniformDiffuseIntensity = shaderList[0].GetDiffuseIntensityLocation();
+        
+
+		// Setting up the Light
+		ambientLight.UseLight(uniformAmbientIntensity, uniformAmbientColour, uniformDiffuseIntensity, uniformDirection);
 
 		// Defining the model matrix for the first piramyd
 		glm::mat4 model(1.0f);
 
 		// Translate, Rotate and Scale
 		model = glm::translate(model, glm::vec3(1.0f, 0.0f, -4.0f));
-		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.5f, 1.0f, 0.0f));
+		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.5f, 0.0f));
 		model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
 
         // Attach the Model matrix
@@ -164,16 +241,19 @@ int main()
 		// Attach the View Matrix
 		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
 
+		// Attach the Texture
+		obamiumTexture.UseTexture();
+
 		// Rendering the mesh
         meshList[0]->RenderMesh();
 
         // Defining the model matrix for the second piramyd
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -4.0f));
-        model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.5f, 1.0f, 0.0f));
+        model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, -0.5f, 0.0f));
         model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        meshList[1]->RenderMesh();
+		meshList[1]->RenderMesh();
 
         // Stop using the shader program
 		glUseProgram(0);

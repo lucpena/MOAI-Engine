@@ -38,10 +38,22 @@ void Mesh::CreateMesh(GLfloat *vertices, uint32_t *indices, uint32_t numOfVertic
 
     // Define the layout of the vertex data within the VBO
     // Attribute 0 (index 0) corresponds to the position attribute of the vertex shader
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, 0);
 
     // Enable the vertex attribute at index 0 (position attribute)
     glEnableVertexAttribArray(0);
+
+    // Attribute 1 (index 1) corresponds to the position attribute of the texture
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, (void*)(sizeof(vertices[0]) * 3));
+
+    // Enable the texture attribute at index 1 (position attribute)
+    glEnableVertexAttribArray(1);
+
+    // Attribute 2 (index 2) corresponds to the position attribute of the normals
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, (void *)(sizeof(vertices[0]) * 5));
+
+    // Enable the texture attribute at index 2 (position attribute)
+    glEnableVertexAttribArray(2);
 
     // Unbind the VBO (not necessary, but good practice to unbind when done)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
