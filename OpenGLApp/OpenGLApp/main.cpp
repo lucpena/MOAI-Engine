@@ -19,7 +19,8 @@
 #include "Window.h"
 #include "Camera.h"
 #include "Texture.h"
-#include "Light.h"
+#include "DirectionalLight.h"
+#include "Material.h"
 
 using std::cerr;
 using std::cout;
@@ -27,27 +28,27 @@ using std::endl;
 using std::vector;
 
 //-------------------------------------------------------------------------
+Window mainWindow;
+Camera camera;
+GLfloat deltaTime = 0.0f;
+GLfloat lastTime = 0.0f;
 
 const float toRadians = 3.14159265f / 180.0f;
-
 bool direction = true;
 float triOffset = 0.0f;
 float triMaxOffset = 0.5f;
 float triIncrement = 0.0005f;
 float currentAngle = 0.0f;
 
-Window mainWindow;
-Camera camera;
-
-GLfloat deltaTime = 0.0f;
-GLfloat lastTime = 0.0f;
-
 vector<Mesh*> meshList;
 vector<Shader> shaderList;
 
 Texture obamiumTexture;
 
-Light ambientLight;
+Material dullMaterial;
+Material shinyMaterial;
+
+DirectionalLight ambientLight;
 
 //---------------------------------------------------------------------------
 
@@ -114,11 +115,11 @@ void CreateObjects()
 	// Define the vertex data for the triangle
 	GLfloat vertices[] = 
 	{
-	//   X      Y     Z      U     V    nX    nY    nZ
-		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 2.0f, 0.5f, 0.0f,  0.0f, 0.0f, 0.0f,
-		1.0f, -1.0f, 0.0f, 1.0f, 0.0f,  0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.5f, 1.0f,   0.0f, 0.0f, 0.0f
+	//   X      Y     Z       U     V    nX    nY    nZ
+		-1.0f, -1.0f, 0.6f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 2.0f,   0.5f, 0.0f,  0.0f, 0.0f, 0.0f,
+		1.0f, -1.0f, -0.6f,   1.0f, 0.0f,  0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f,    0.5f, 1.0f,  0.0f, 0.0f, 0.0f
 	};
 
     CalcAverageNormals(indices, 12, vertices, 32, 8, 5);
@@ -158,8 +159,13 @@ int main()
 	obamiumTexture.LoadTexture();
 
 	// Setting up Ambient Light
-	ambientLight = Light(1.0f, 1.0f, 1.0f, 0.5f,		// Ambient Light
-					     2.0f, -1.0f, -2.0f, 1.0f);		// Diffuse Light
+	ambientLight = DirectionalLight(1.0f, 1.0f, 1.0f, 	// RGB Color
+									0.18f, 0.75f,			// Ambient Intensity, Diffuse Intensity
+									0.0f, 0.0f, -1.0f); // XYZ Direction
+
+	// Setting the materials for Phong Shading
+	shinyMaterial = Material(0.5f, 32);
+	dullMaterial = Material(0.05f, 2);
 
 	// Getting the Uniforms (Shaders variables)
 	// The camera matrices from the shaders
@@ -168,6 +174,7 @@ int main()
 	// Light uniforms
 	GLuint uniformAmbientIntensity = 0, uniformAmbientColour = 0;
     GLuint uniformDirection = 0, uniformDiffuseIntensity = 0;
+	GLuint uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0;
 
 	// Setting Projection matrix
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
@@ -219,40 +226,49 @@ int main()
 		uniformAmbientIntensity = shaderList[0].GetAmbientIntensityLocation();
         uniformDirection = shaderList[0].GetDirectionLocation();
         uniformDiffuseIntensity = shaderList[0].GetDiffuseIntensityLocation();
-        
+		uniformEyePosition = shaderList[0].GetEyePositionLocation();
+		uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
+		uniformShininess = shaderList[0].GetShininessLocation();
 
 		// Setting up the Light
 		ambientLight.UseLight(uniformAmbientIntensity, uniformAmbientColour, uniformDiffuseIntensity, uniformDirection);
+
+		// Setting the Projection Matrix
+		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+
+		// Setting the View Matrix
+		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
+
+		// Attaching the camera position to the Eye Position for the shaders
+		glUniform3f(uniformEyePosition, camera.getCameraPosition().x, camera.getCameraPosition().y, camera.getCameraPosition().z);
 
 		// Defining the model matrix for the first piramyd
 		glm::mat4 model(1.0f);
 
 		// Translate, Rotate and Scale
-		model = glm::translate(model, glm::vec3(1.0f, 0.0f, -4.0f));
+		model = glm::translate(model, glm::vec3(2.0f, 0.0f, -4.0f));
 		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.5f, 0.0f));
-		model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+		//model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
 
         // Attach the Model matrix
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 
-        // Attach the Projection Matrix 
-        glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
-
-		// Attach the View Matrix
-		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
-
 		// Attach the Texture
 		obamiumTexture.UseTexture();
+
+		// Set the Material for the mesh
+		shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 
 		// Rendering the mesh
         meshList[0]->RenderMesh();
 
         // Defining the model matrix for the second piramyd
         model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -4.0f));
+        model = glm::translate(model, glm::vec3(-2.0f, 0.0f, -4.0f));
         model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, -0.5f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+        //model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		meshList[1]->RenderMesh();
 
         // Stop using the shader program

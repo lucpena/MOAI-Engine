@@ -7,6 +7,7 @@ layout (location = 2) in vec3 norm;
 out vec4 vColor;
 out vec2 TexCoord0;
 out vec3 Normal;
+out vec3 FragPos;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -20,4 +21,6 @@ void main()
 	TexCoord0 = texture;
 
 	Normal = mat3(transpose(inverse( model ))) * norm;
+
+	FragPos = (model * vec4(position, 1.0)).xyz;
 }

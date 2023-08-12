@@ -103,7 +103,7 @@ void Shader::CompileShader(const char *vertexCode, const char *fragmentCode)
 	// Shader compilation and linking successful
 	// The shader program is now ready for use in rendering.
 
-    // Getting the variables from the Shaders
+    // Getting the values from the Shaders
     uniformModel = glGetUniformLocation(shaderID, "model");
     uniformProjection = glGetUniformLocation(shaderID, "projection");
     uniformView = glGetUniformLocation(shaderID, "view");
@@ -111,6 +111,9 @@ void Shader::CompileShader(const char *vertexCode, const char *fragmentCode)
 	uniformAmbientIntensity = glGetUniformLocation(shaderID, "directionalLight.ambientIntensity");
     uniformDirection = glGetUniformLocation(shaderID, "directionalLight.direction");
     uniformDiffuseIntensity = glGetUniformLocation(shaderID, "directionalLight.diffuseIntensity");
+    uniformSpecularIntensity = glGetUniformLocation(shaderID, "material.specularIntensity");
+    uniformShininess = glGetUniformLocation(shaderID, "material.shininess");
+    uniformEyePosition = glGetUniformLocation(shaderID, "eyePosition");
 }
 
 // Getting the uniforms
@@ -121,6 +124,9 @@ GLuint Shader::GetAmbientColourLocation() { return uniformAmbientColour; }
 GLuint Shader::GetAmbientIntensityLocation() { return uniformAmbientIntensity; }
 GLuint Shader::GetDiffuseIntensityLocation() { return uniformDiffuseIntensity; }
 GLuint Shader::GetDirectionLocation() { return uniformDirection; }
+GLuint Shader::GetSpecularIntensityLocation(){ return uniformSpecularIntensity; }
+GLuint Shader::GetShininessLocation() { return uniformShininess; }
+GLuint Shader::GetEyePositionLocation() { return uniformEyePosition; }
 
 void Shader::UseShader()
 {
