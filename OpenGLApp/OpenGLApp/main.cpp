@@ -14,12 +14,14 @@
 #include <glm\gtc\type_ptr.hpp>
 
 // My Libraries
+#include "Config.h"
 #include "Mesh.h"
 #include "Shader.h"
 #include "Window.h"
 #include "Camera.h"
 #include "Texture.h"
 #include "DirectionalLight.h"
+#include "PointLight.h"
 #include "Material.h"
 
 using std::cerr;
@@ -44,11 +46,16 @@ vector<Mesh*> meshList;
 vector<Shader> shaderList;
 
 Texture obamiumTexture;
+Texture floorTexture;
+Texture plainTexture;
 
 Material dullMaterial;
 Material shinyMaterial;
+Material veryShinyMaterial;
+Material plainMaterial;
 
 DirectionalLight ambientLight;
+PointLight pointLights[MAX_POINT_LIGHTS];
 
 //---------------------------------------------------------------------------
 
@@ -122,15 +129,33 @@ void CreateObjects()
 		0.0f, 1.0f, 0.0f,    0.5f, 1.0f,  0.0f, 0.0f, 0.0f
 	};
 
+	uint32_t floorIndices[] =  
+	{
+		0, 2, 1,
+		1, 2, 3
+	};
+
+	GLfloat floorVertices[] = 
+	{
+		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, -1.0f, 0.0f,
+		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, -1.0f, 0.0f,
+		-10.0f, 0.0f, 10.0f,	0.f, 10.0f,		0.0f, -1.0f, 0.0f,
+		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, -1.0f, 0.0f
+	};
+
     CalcAverageNormals(indices, 12, vertices, 32, 8, 5);
 
 	Mesh* triangleMesh = new Mesh();//    vertices, indices
     triangleMesh->CreateMesh(vertices, indices, 32, 12);
     meshList.push_back(triangleMesh);
 
-    Mesh *triangleMesh2 = new Mesh();//    vertices, indices
+    Mesh* triangleMesh2 = new Mesh();//    vertices, indices
     triangleMesh2->CreateMesh(vertices, indices, 32, 12);
     meshList.push_back(triangleMesh2);
+
+	Mesh* floorMesh = new Mesh();
+	floorMesh->CreateMesh(floorVertices, floorIndices, 32, 6);
+	meshList.push_back(floorMesh);
 }
 
 void CreateShaders()
@@ -158,12 +183,34 @@ int main()
 	obamiumTexture = Texture("Assets/Textures/obamium.png");
 	obamiumTexture.LoadTexture();
 
+	floorTexture = Texture("Assets/Textures/ground_01.png");
+	floorTexture.LoadTexture();
+
+	plainTexture = Texture("Assets/Textures/plain.png");
+	plainTexture.LoadTexture();
+
 	// Setting up Ambient Light
-	ambientLight = DirectionalLight(1.0f, 1.0f, 1.0f, 	// RGB Color
-									0.18f, 0.75f,			// Ambient Intensity, Diffuse Intensity
+	ambientLight = DirectionalLight(1.0f, 1.0f, 1.0f,	// RGB Color
+									0.18f, 0.75f,		// Ambient Intensity, Diffuse Intensity
 									0.0f, 0.0f, -1.0f); // XYZ Direction
 
+	// Setting Point Lights
+	uint32_t pointLightCount = 0;
+
+	pointLights[0] = PointLight(0.0f, 1.0f, 0.0f,		// RGB Color
+							  	1.0f, 1.0f,				// Ambient Intensity, Diffuse Intensity
+								-4.0f, 0.0f, 0.0f,		// XYZ Direction
+								0.3f, 0.2f, 0.1f);		// Constant, Linear, Exponent
+	pointLightCount++;
+
+	pointLights[1] = PointLight(1.0f, 0.0f, 0.0f,  // RGB Color
+								1.0f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
+								4.0f, 0.0f, 0.0f, // XYZ Direction
+								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
+	pointLightCount++;
+
 	// Setting the materials for Phong Shading
+	veryShinyMaterial = Material(4.0f, 256);
 	shinyMaterial = Material(0.5f, 32);
 	dullMaterial = Material(0.05f, 2);
 
@@ -172,8 +219,6 @@ int main()
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
 	
 	// Light uniforms
-	GLuint uniformAmbientIntensity = 0, uniformAmbientColour = 0;
-    GLuint uniformDirection = 0, uniformDiffuseIntensity = 0;
 	GLuint uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0;
 
 	// Setting Projection matrix
@@ -214,7 +259,7 @@ int main()
 		}
 
 		// Clear the screen with a specific color
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClearColor(0.08f, 0.08f, 0.11f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Use the shader program for rendering
@@ -222,16 +267,13 @@ int main()
 		uniformModel = shaderList[0].GetModelLocation();
 		uniformProjection = shaderList[0].GetProjectionLocation();
 		uniformView = shaderList[0].GetViewLocation();
-		uniformAmbientColour = shaderList[0].GetAmbientColourLocation();
-		uniformAmbientIntensity = shaderList[0].GetAmbientIntensityLocation();
-        uniformDirection = shaderList[0].GetDirectionLocation();
-        uniformDiffuseIntensity = shaderList[0].GetDiffuseIntensityLocation();
 		uniformEyePosition = shaderList[0].GetEyePositionLocation();
 		uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
 		uniformShininess = shaderList[0].GetShininessLocation();
 
 		// Setting up the Light
-		ambientLight.UseLight(uniformAmbientIntensity, uniformAmbientColour, uniformDiffuseIntensity, uniformDirection);
+		shaderList[0].SetDirectionalLight(&ambientLight);
+		shaderList[0].SetPointLights(pointLights, pointLightCount);
 
 		// Setting the Projection Matrix
 		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
@@ -271,7 +313,17 @@ int main()
 		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 		meshList[1]->RenderMesh();
 
-        // Stop using the shader program
+		// Addind the Floor
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+		//model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		floorTexture.UseTexture();
+		// plainTexture.UseTexture();
+		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		meshList[2]->RenderMesh();
+
+		// Stop using the shader program
 		glUseProgram(0);
 
 		// Swap the front and back buffers to display the rendered frame
