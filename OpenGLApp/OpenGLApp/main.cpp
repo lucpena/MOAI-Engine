@@ -22,7 +22,10 @@
 #include "Texture.h"
 #include "DirectionalLight.h"
 #include "PointLight.h"
+#include "SpotLight.h"
 #include "Material.h"
+
+#include <assimp\Importer.hpp>
 
 using std::cerr;
 using std::cout;
@@ -56,6 +59,7 @@ Material plainMaterial;
 
 DirectionalLight ambientLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
+SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 //---------------------------------------------------------------------------
 
@@ -96,7 +100,7 @@ void CalcAverageNormals(uint32_t* indices, uint32_t indiceCount, GLfloat* vertic
         vertices[in2 + 2] += normal.z;
     }
 
-    for( size_t i = 0; i < verticesCount / vLength; i++  )
+    for( uint32_t i = 0; i < verticesCount / vLength; i++  )
     {
         uint32_t nOffeset = i * vLength + normalOffset;
         glm::vec3 vec(vertices[nOffeset], vertices[nOffeset + 1], vertices[nOffeset + 2]);
@@ -165,6 +169,9 @@ void CreateShaders()
 	shaderList.push_back(*_shader);
 }
 
+// Setting up ASSIMP
+Assimp::Importer importer;
+
 // Main function for the OpenGL application
 int main()
 {
@@ -191,23 +198,40 @@ int main()
 
 	// Setting up Ambient Light
 	ambientLight = DirectionalLight(1.0f, 1.0f, 1.0f,	// RGB Color
-									0.18f, 0.75f,		// Ambient Intensity, Diffuse Intensity
+									0.18f, 0.2f,		// Ambient Intensity, Diffuse Intensity
 									0.0f, 0.0f, -1.0f); // XYZ Direction
 
 	// Setting Point Lights
 	uint32_t pointLightCount = 0;
 
-	pointLights[0] = PointLight(0.0f, 1.0f, 0.0f,		// RGB Color
-							  	1.0f, 1.0f,				// Ambient Intensity, Diffuse Intensity
+	pointLights[0] = PointLight(1.0f, 1.0f, 1.0f,		// RGB Color
+							  	0.2f, 1.0f,				// Ambient Intensity, Diffuse Intensity
 								-4.0f, 0.0f, 0.0f,		// XYZ Direction
 								0.3f, 0.2f, 0.1f);		// Constant, Linear, Exponent
-	pointLightCount++;
+	//pointLightCount++;
 
-	pointLights[1] = PointLight(1.0f, 0.0f, 0.0f,  // RGB Color
-								1.0f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
+	pointLights[1] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
+								0.2f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
 								4.0f, 0.0f, 0.0f, // XYZ Direction
 								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
-	pointLightCount++;
+	//pointLightCount++;
+
+	// Setting Spot Lights
+	uint32_t spotLightCount = 0;
+	spotLights[0] = SpotLight(1.0f, 1.0f, 1.0f,	  	// RGB Color
+							  0.0f, 2.0f,		  	// Ambient Intensity, Diffuse Intensity
+							  0.0f, 0.0f, 0.0f,		// XYZ Position
+							  0.0f, 0.0f, 0.0f,	 // XYZ Direction
+							  0.3f, 0.2f, 0.1f, 
+							  20.0f  ); 			// Edge angle
+	spotLightCount++;
+	spotLights[1] = SpotLight(1.0f, 1.0f, 1.0f,
+							  1.0f, 1.0f,
+							  0.0f, 5.0f, 0.0f,
+							  0.0f, -1.0f, 0.0f,
+							  0.3f, 0.2f, 0.1f,
+							  20.0f);
+	spotLightCount++;
 
 	// Setting the materials for Phong Shading
 	veryShinyMaterial = Material(4.0f, 256);
@@ -228,7 +252,7 @@ int main()
 	while (!mainWindow.getShouldClose())
 	{
 		// Getting DELTA TIME
-		GLfloat now = glfwGetTime();
+		GLfloat now = (GLfloat)glfwGetTime();
 		deltaTime = now - lastTime;
 		lastTime = now;
 
@@ -271,9 +295,15 @@ int main()
 		uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
 		uniformShininess = shaderList[0].GetShininessLocation();
 
+		// Setting the flashlight
+		glm::vec3 lowerLight = camera.getCameraPosition();
+		lowerLight.y -= 0.3f;
+		spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+
 		// Setting up the Light
 		shaderList[0].SetDirectionalLight(&ambientLight);
 		shaderList[0].SetPointLights(pointLights, pointLightCount);
+		shaderList[0].SetSpotLights(spotLights, spotLightCount);
 
 		// Setting the Projection Matrix
 		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
