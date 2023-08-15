@@ -13,7 +13,7 @@ Texture::Texture()
     fileLocation = "";
 }
 
-Texture::Texture(char* _fileLocation)
+Texture::Texture(const char* _fileLocation)
 {
     textureID = 0;
     width = 0;
@@ -22,14 +22,15 @@ Texture::Texture(char* _fileLocation)
     fileLocation = _fileLocation;
 }
 
-void Texture::LoadTexture()
+bool Texture::LoadTexture()
 {
-    stbi_set_flip_vertically_on_load(true);
+    //stbi_set_flip_vertically_on_load(true);
     unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 0);
 
     if( !texData )
     {
-        cerr << "\n\nERROR: Failed to find the image " << fileLocation << ".\n" << endl;
+        cerr << "\n\nERROR: Failed to find the texture " << fileLocation << ".\n" << endl;
+        return false;
     }
 
     // Generating the texture and giving it an ID
@@ -46,8 +47,7 @@ void Texture::LoadTexture()
 
     // Setting the Texture
     // Can be a problem with the texture. Make shure it's the right one here <GL_RGBA or GL_RGB>
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
 
     // Create mipmaps automatically
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -57,6 +57,47 @@ void Texture::LoadTexture()
     // Goodbye texture 
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(texData);
+
+    return true;
+}
+
+bool Texture::LoadTextureA()
+{
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *texData = stbi_load(fileLocation, &width, &height, &bitDepth, 4);
+
+    if (!texData)
+    {
+        cerr << "\n\nERROR: Failed to find the texture " << fileLocation << ".\n" << endl;
+        return false;
+    }
+
+    // Generating the texture and giving it an ID
+    glGenTextures(1, &textureID);
+
+    // Binding
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Setting parameters for this texture
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Away from the image
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Closer to the image
+
+    // Setting the Texture
+    // Can be a problem with the texture. Make shure it's the right one here <GL_RGBA or GL_RGB>
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
+
+    // Create mipmaps automatically
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Texture loaded to the memory! UwU
+
+    // Goodbye texture
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(texData);
+
+    return true;
 }
 
 void Texture::UseTexture()
