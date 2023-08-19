@@ -4,7 +4,24 @@ Model::Model()
 {
 }
 
-void Model::LoadModel(const string &fileName, const string &objName)
+void Model::LoadModel(const string& fileName, const string& objName)
+{
+    cerr << "\nLoading model [" << objName << "]..." << endl;
+
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+
+    if (!scene)
+    {
+        cerr << "\n\nERROR: Failed to load ASSIMP Scene at " << fileName << ". " << importer.GetErrorString() << ".\n" << endl;
+        return;
+    }
+
+    LoadNode(scene->mRootNode, scene);
+    LoadMaterials(scene, objName, false);
+}
+
+void Model::LoadModel(const string &fileName, const string &objName, bool invertedTexture)
 {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
@@ -18,7 +35,7 @@ void Model::LoadModel(const string &fileName, const string &objName)
 
     LoadNode(scene->mRootNode, scene);
 
-    LoadMaterials(scene, objName);
+    LoadMaterials(scene, objName, invertedTexture);
 }
 
 void Model::RenderModel()
@@ -112,7 +129,7 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
     meshToTex.push_back(mesh->mMaterialIndex);
 }
 
-void Model::LoadMaterials(const aiScene* scene, const string &objName)
+void Model::LoadMaterials(const aiScene* scene, const string &objName, bool invertedTexture)
 {
     textureList.resize(scene->mNumMaterials);
 
@@ -139,28 +156,31 @@ void Model::LoadMaterials(const aiScene* scene, const string &objName)
 
                 textureList[i] = new Texture(texPath.c_str());
 
-                if( fileExtension == "png" )
-                {
-                    cerr << "Loading " << fileExtension << " RGBA texture: " << fileName << "..." << endl;
-                    if (!textureList[i]->LoadTextureA())
-                    {
-                        cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"<< endl;
-                        delete textureList[i];
-                        textureList[i] = nullptr;
-                    }
-                }
+                 if( fileExtension == "png" )
+                 {
+                     cerr << "Loading " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+                     if (!textureList[i]->LoadTextureA(invertedTexture))
+                     {
+                         cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"<< endl;
+                         delete textureList[i];
+                         textureList[i] = nullptr;
+                     }
+                 }
 
-                if (fileExtension != "png")
-                {
-                    cerr << "Loading " << fileExtension << " RGB texture: " << fileName << "..." << endl;
-                    if (!textureList[i]->LoadTextureA())
-                    {
-                        cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
-                             << endl;
-                        delete textureList[i];
-                        textureList[i] = nullptr;
-                    }
-                }
+                 if (fileExtension != "png")
+                 {
+                     cerr << "Loading " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+                     if (!textureList[i]->LoadTextureA(invertedTexture))
+                     {
+                         cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n" << endl;
+                         delete textureList[i];
+                         textureList[i] = nullptr;
+                     }
+                 }
+
+                // everything white lol
+                //textureList[i] = new Texture("Assets/Textures/plain.png");
+                //textureList[i]->LoadTextureA();
             }
         }
 

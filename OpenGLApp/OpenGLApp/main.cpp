@@ -5,6 +5,8 @@
 #include <string.h>
 #include <cmath>
 #include <vector>
+#include <Windows.h>
+#include <thread>
 
 // OpenGL Libraries
 #include <GL\glew.h>
@@ -31,6 +33,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::thread;
 
 //-------------------------------------------------------------------------
 Window mainWindow;
@@ -47,6 +50,14 @@ float currentAngle = 0.0f;
 
 vector<Mesh*> meshList;
 vector<Shader> shaderList;
+Shader directionalShadowShader;
+
+// Getting the Uniforms (Shaders variables)
+// The camera matrices from the shaders
+GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
+
+// Light uniforms
+GLuint uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0;
 
 Texture obamiumTexture;
 Texture floorTexture;
@@ -60,9 +71,13 @@ Material plainMaterial;
 DirectionalLight ambientLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
+uint32_t spotLightCount = 0;
+uint32_t pointLightCount = 0;
 
 Model sponza;
 Model moai;
+
+
 //---------------------------------------------------------------------------
 
 // Vertex Shader
@@ -169,13 +184,173 @@ void CreateShaders()
 	Shader *_shader = new Shader();
 	_shader->CreateFromFile(vShader, fShader);
 	shaderList.push_back(*_shader);
+
+	directionalShadowShader.CreateFromFile("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+}
+
+void RenderScene()
+{
+	// // Defining the model matrix for the first piramyd
+	// glm::mat4 model(1.0f);
+
+	// // Translate, Rotate and Scale
+	// model = glm::translate(model, glm::vec3(2.0f, 0.0f, -4.0f));
+	// model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.5f, 0.0f));
+	// model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+
+	// // Attach the Model matrix
+	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+
+	// // Attach the Texture
+	// obamiumTexture.UseTexture();
+
+	// // Set the Material for the mesh
+	// shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+
+	// // Rendering the mesh
+	// meshList[0]->RenderMesh();
+
+	// // Defining the model matrix for the second piramyd
+	// model = glm::mat4(1.0f);
+	// model = glm::translate(model, glm::vec3(-2.0f, 0.0f, -4.0f));
+	// model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, -0.5f, 0.0f));
+	// model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	// meshList[1]->RenderMesh();
+
+	// // Addind the Floor
+	// model = glm::mat4(1.0f);
+	// model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+	// model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	// floorTexture.UseTexture();
+	// plainTexture.UseTexture();
+	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	// meshList[2]->RenderMesh();
+
+	// Adding the SPONZA model
+	glm::mat4 model(1.0f);
+	// model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.5f, -1.0f, -8.0f));
+	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	// model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	sponza.RenderModel();
+
+	// Adding MOAI Model
+	currentAngle += 0.01f;
+	if (currentAngle >= 360)
+	{
+		currentAngle = 0;
+	}
+
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, -1.25f, -7.0f));
+	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+	model = glm::rotate(model, -90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.0f, 0.5f));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	moai.RenderModel();
+}
+
+void DirectionalShadowMapPass(DirectionalLight* light)
+{
+	directionalShadowShader.UseShader();
+
+	// Setting the framebuffer as the same size of the Viewport
+	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+
+	// Writing the shadow map
+	light->GetShadowMap()->Write();
+
+	// Clearing the info already in the Depth Buffer
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	// Getting the model location fom the Shader
+	uniformModel = directionalShadowShader.GetModelLocation();
+
+	// Calculate the Transform
+	directionalShadowShader.SetDirectionalLightTransform(&light->CalculateLightTransform());
+
+	RenderScene();
+
+	// Unbind for the regular Render Pass;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+}
+
+void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+{
+	// Make shure we are using the right shader
+	shaderList[0].UseShader();
+
+	// Use the shader program for rendering
+	shaderList[0].UseShader();
+	uniformModel = shaderList[0].GetModelLocation();
+	uniformProjection = shaderList[0].GetProjectionLocation();
+	uniformView = shaderList[0].GetViewLocation();
+	uniformEyePosition = shaderList[0].GetEyePositionLocation();
+	uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
+	uniformShininess = shaderList[0].GetShininessLocation();
+
+	// Resseting the viewport
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	// Clear the screen with a specific color
+	glClearColor(0.63f, 0.75f, 0.90f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Setting the Projection Matrix
+	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+	// Setting the View Matrix
+	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+
+	// Attaching the camera position to the Eye Position for the shaders
+	glUniform3f(uniformEyePosition, camera.getCameraPosition().x, camera.getCameraPosition().y, camera.getCameraPosition().z);
+
+	// Setting up the Light
+	shaderList[0].SetDirectionalLight(&ambientLight);
+	shaderList[0].SetPointLights(pointLights, pointLightCount);
+	shaderList[0].SetSpotLights(spotLights, spotLightCount);
+	shaderList[0].SetDirectionalLightTransform(&ambientLight.CalculateLightTransform());
+
+	// Setting shadow map
+	ambientLight.GetShadowMap()->Read(GL_TEXTURE1);
+
+	// ID of the Texture (It's by default already 0 :D)
+	shaderList[0].SetTexture(0);
+
+	//
+	shaderList[0].SetDirectionalShadowMap(1);
+
+	// Setting the flashlight
+	// glm::vec3 lowerLight = camera.getCameraPosition();
+	// lowerLight.y -= 0.3f;
+	// spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+
+	RenderScene();
+
 }
 
 // Main function for the OpenGL application
 int main()
 {
+	// Makes the console green like The Matrix UwU
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, 10); // Set text color to green
+
+	cerr << "--------------------------------------------------------" << endl;
+	cerr << "| MOAI ENGINE v1.0 - OpenGL 3.3                        |" << endl;
+	cerr << "--------------------------------------------------------\n\n" << endl;
+	cerr << "Loading..." << endl;
+
 	// Create the main window
-	mainWindow = Window(1280, 720);
+	mainWindow = Window(WINDOW_WIDTH, WINDOW_HEIGHT);
 	mainWindow.Initialise();
 
 	// Create the triangle and set up the shaders
@@ -186,51 +361,15 @@ int main()
 	camera = Camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f, 5.0f, 0.2f);
 
 	// Load the Texture
-	obamiumTexture = Texture("Assets/Textures/obamium.png");
-	obamiumTexture.LoadTextureA();
+	// obamiumTexture = Texture("Assets/Textures/obamium.png");
+	// obamiumTexture.LoadTextureA();
 
-	floorTexture = Texture("Assets/Textures/ground_01.png");
-	floorTexture.LoadTextureA();
+	// floorTexture = Texture("Assets/Textures/ground_01.png");
+	// floorTexture.LoadTextureA();
 
-	plainTexture = Texture("Assets/Textures/plain.png");
-	plainTexture.LoadTextureA();
+	// plainTexture = Texture("Assets/Textures/plain.png");
+	// plainTexture.LoadTextureA();
 
-	// Setting up Ambient Light
-	ambientLight = DirectionalLight(0.63f, 0.75f, 0.90f, // RGB Color
-									0.2f, 0.1f,			 // Ambient Intensity, Diffuse Intensity
-									0.0f, 0.0f, -1.0f);	 // XYZ Direction
-
-	// Setting Point Lights
-	uint32_t pointLightCount = 0;
-
-	pointLights[0] = PointLight(1.0f, 1.0f, 1.0f,		// RGB Color
-							  	0.4f, 0.3f,				// Ambient Intensity, Diffuse Intensity
-								0.0f, 2.0f, -7.0f,		// XYZ Position
-								0.3f, 0.2f, 0.1f);		// Constant, Linear, Exponent
-	pointLightCount++;
-
-	pointLights[1] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
-								0.2f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
-								0.0f, 5.0f, 5.0f, // XYZ Position
-								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
-	//pointLightCount++;
-
-	// Setting Spot Lights
-	uint32_t spotLightCount = 0;
-	spotLights[0] = SpotLight(1.0f, 1.0f, 1.0f,	  	// RGB Color
-							  0.0f, 2.0f,		  	// Ambient Intensity, Diffuse Intensity
-							  0.0f, 0.0f, 0.0f,		// XYZ Position
-							  0.0f, 0.0f, 0.0f,	 // XYZ Direction
-							  0.3f, 0.2f, 0.1f, 
-							  20.0f  ); 			// Edge angle
-	//spotLightCount++;
-	spotLights[1] = SpotLight(1.0f, 1.0f, 1.0f,
-							  1.0f, 1.0f,
-							  0.0f, 5.0f, 0.0f,
-							  0.0f, -1.0f, 0.0f,
-							  0.3f, 0.2f, 0.1f,
-							  20.0f);
-	//spotLightCount++;
 
 	// Setting the materials for Phong Shading
 	veryShinyMaterial = Material(4.0f, 256);
@@ -244,15 +383,48 @@ int main()
 	moai = Model();
 	moai.LoadModel("Assets/Models/Moai/moai.obj", "moai");
 
-	// Getting the Uniforms (Shaders variables)
-	// The camera matrices from the shaders
-	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
-	
-	// Light uniforms
-	GLuint uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0;
+	// Setting up Ambient Light
+	ambientLight = DirectionalLight(2048, 2048,			   // Shadow Buffer (width, height)
+									0.63f, 0.75f, 0.90f,   // RGB Color
+									0.2f, 0.3f,			   // Ambient Intensity, Diffuse Intensity
+									0.0f, -15.0f, -10.0f); // XYZ Direction
+
+	// Setting Point Lights
+	pointLights[0] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
+								0.4f, 0.3f,		   // Ambient Intensity, Diffuse Intensity
+								0.0f, 2.0f, -7.0f, // XYZ Position
+								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
+	pointLightCount++;
+
+	pointLights[1] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
+								0.2f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
+								0.0f, 5.0f, 5.0f,  // XYZ Position
+								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
+	pointLightCount++;
+
+	// Setting Spot Lights
+	spotLights[0] = SpotLight(1.0f, 1.0f, 1.0f, // RGB Color
+							  0.0f, 2.0f,		// Ambient Intensity, Diffuse Intensity
+							  0.0f, 0.0f, 0.0f, // XYZ Position
+							  0.0f, 0.0f, 0.0f, // XYZ Direction
+							  0.3f, 0.2f, 0.1f,
+							  20.0f); // Edge angle
+	spotLightCount++;
+	spotLights[1] = SpotLight(1.0f, 1.0f, 1.0f,
+							  1.0f, 1.0f,
+							  0.0f, 5.0f, 0.0f,
+							  0.0f, -1.0f, 0.0f,
+							  0.3f, 0.2f, 0.1f,
+							  20.0f);
+	spotLightCount++;
+
+	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
+		   uniformSpecularIntensity = 0, uniformShininess = 0;
 
 	// Setting Projection matrix
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
+
+	cerr << "\nLoading complete!" << endl;
 
 	// Render loop: keeps the window open until the user closes it
 	while (!mainWindow.getShouldClose())
@@ -269,118 +441,8 @@ int main()
 		camera.keyControl(mainWindow.getsKeys(), deltaTime);
 		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
-		if( direction )
-		{
-			triOffset += triIncrement;
-		} else 
-		{
-			triOffset -= triIncrement;
-		}
-
-		if( abs(triOffset) >= triMaxOffset ) 
-		{
-			direction = !direction;
-		}
-
-		currentAngle += 0.01f;
-		if( currentAngle >= 360 )
-		{
-			currentAngle = 0;
-		}
-
-		// Clear the screen with a specific color
-		glClearColor(0.63f, 0.75f, 0.90f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Use the shader program for rendering
-		shaderList[0].UseShader();
-		uniformModel = shaderList[0].GetModelLocation();
-		uniformProjection = shaderList[0].GetProjectionLocation();
-		uniformView = shaderList[0].GetViewLocation();
-		uniformEyePosition = shaderList[0].GetEyePositionLocation();
-		uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
-		uniformShininess = shaderList[0].GetShininessLocation();
-
-		// Setting the flashlight
-		glm::vec3 lowerLight = camera.getCameraPosition();
-		lowerLight.y -= 0.3f;
-		spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
-
-		// Setting up the Light
-		shaderList[0].SetDirectionalLight(&ambientLight);
-		shaderList[0].SetPointLights(pointLights, pointLightCount);
-		shaderList[0].SetSpotLights(spotLights, spotLightCount);
-
-		// Setting the Projection Matrix
-		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
-
-		// Setting the View Matrix
-		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
-
-		// Attaching the camera position to the Eye Position for the shaders
-		glUniform3f(uniformEyePosition, camera.getCameraPosition().x, camera.getCameraPosition().y, camera.getCameraPosition().z);
-
-		// Defining the model matrix for the first piramyd
-		glm::mat4 model(1.0f);
-
-		// Translate, Rotate and Scale
-		model = glm::translate(model, glm::vec3(2.0f, 0.0f, -4.0f));
-		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.5f, 0.0f));
-		//model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
-
-        // Attach the Model matrix
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-
-		// Attach the Texture
-		obamiumTexture.UseTexture();
-
-		// Set the Material for the mesh
-		shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-
-		// Rendering the mesh
-        //meshList[0]->RenderMesh();
-
-        // Defining the model matrix for the second piramyd
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-2.0f, 0.0f, -4.0f));
-        model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, -0.5f, 0.0f));
-        //model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		//meshList[1]->RenderMesh();
-
-		// Addind the Floor
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-		//model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		floorTexture.UseTexture();
-		// plainTexture.UseTexture();
-		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		//meshList[2]->RenderMesh();
-
-		// Adding the SPONZA model
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.5f, -1.0f, -8.0f));
-		model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
-		model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-		// model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		sponza.RenderModel();
-
-		// Adding MOAI Model
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, -1.25f, -7.0f));
-		model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
-		model = glm::rotate(model, -90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.0f, 0.5f));
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		moai.RenderModel();
-
-		// Stop using the shader program
-		glUseProgram(0);
+		DirectionalShadowMapPass(&ambientLight);
+		RenderPass(projection, camera.calculateViewMatrix());
 
 		// Swap the front and back buffers to display the rendered frame
 		mainWindow.swapBuffers();

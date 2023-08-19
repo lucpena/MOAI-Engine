@@ -22,9 +22,12 @@ Texture::Texture(const char* _fileLocation)
     fileLocation = _fileLocation;
 }
 
-bool Texture::LoadTexture()
+
+
+bool Texture::LoadTexture(bool invertedTexture)
 {
-    //stbi_set_flip_vertically_on_load(true);
+    if (invertedTexture) stbi_set_flip_vertically_on_load(true);
+
     unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 0);
 
     if( !texData )
@@ -42,8 +45,10 @@ bool Texture::LoadTexture()
     // Setting parameters for this texture
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   // Away from the image
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);   // Closer to the image
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Away from the image
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Closer to the image
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // Away from the image
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // Closer to the image
 
     // Setting the Texture
     // Can be a problem with the texture. Make shure it's the right one here <GL_RGBA or GL_RGB>
@@ -61,9 +66,10 @@ bool Texture::LoadTexture()
     return true;
 }
 
-bool Texture::LoadTextureA()
+bool Texture::LoadTextureA(bool invertedTexture)
 {
-    stbi_set_flip_vertically_on_load(true);
+    if(invertedTexture) stbi_set_flip_vertically_on_load(true);
+
     unsigned char *texData = stbi_load(fileLocation, &width, &height, &bitDepth, 4);
 
     if (!texData)
@@ -83,6 +89,8 @@ bool Texture::LoadTextureA()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Away from the image
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Closer to the image
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // Away from the image
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // Closer to the image
 
     // Setting the Texture
     // Can be a problem with the texture. Make shure it's the right one here <GL_RGBA or GL_RGB>
@@ -99,6 +107,17 @@ bool Texture::LoadTextureA()
 
     return true;
 }
+
+bool Texture::LoadTexture()
+{
+    return LoadTexture(false);
+}
+
+bool Texture::LoadTextureA()
+{
+    return LoadTextureA(false);
+}
+
 
 void Texture::UseTexture()
 {
