@@ -76,7 +76,9 @@ uint32_t pointLightCount = 0;
 
 Model sponza;
 Model moai;
-
+Model sponza2;
+Model lostEmpire;
+Model bistroExterior;
 
 //---------------------------------------------------------------------------
 
@@ -229,8 +231,9 @@ void RenderScene()
 	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 	// meshList[2]->RenderMesh();
 
-	// Adding the SPONZA model
 	glm::mat4 model(1.0f);
+
+	// Adding the SPONZA model
 	// model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(0.5f, -1.0f, -8.0f));
 	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
@@ -239,6 +242,26 @@ void RenderScene()
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 	sponza.RenderModel();
+
+	// // Adding the SPONZA 2 model
+	// // model = glm::mat4(1.0f);
+	// model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+	// model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+	// model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	// // model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	// sponza2.RenderModel();
+
+	// Adding the Bistro Exterior model
+	// model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, -1.5f, -10.0f));
+	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	// model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	//bistroExterior.RenderModel();
 
 	// Adding MOAI Model
 	currentAngle += 0.01f;
@@ -383,24 +406,33 @@ int main()
 	moai = Model();
 	moai.LoadModel("Assets/Models/Moai/moai.obj", "moai");
 
+	sponza2 = Model();
+	//sponza2.LoadModel("Assets/Models/Sponza2/sponza.obj", "sponza2");
+
+	lostEmpire = Model();
+	//lostEmpire.LoadModel("Assets/Models/Lost Empire/lost_empire.obj", "lost_empire");
+
+	bistroExterior = Model();
+	//bistroExterior.LoadModel("Assets/Models/Bistro/exterior.obj", "exterior");
+
 	// Setting up Ambient Light
 	ambientLight = DirectionalLight(2048, 2048,			   // Shadow Buffer (width, height)
 									0.63f, 0.75f, 0.90f,   // RGB Color
-									0.2f, 0.3f,			   // Ambient Intensity, Diffuse Intensity
-									0.0f, -15.0f, -10.0f); // XYZ Direction
+									0.3f, 0.5f,			   // Ambient Intensity, Diffuse Intensity
+									0.0f, -25.0f, -8.0f); // XYZ Direction
 
 	// Setting Point Lights
 	pointLights[0] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
 								0.4f, 0.3f,		   // Ambient Intensity, Diffuse Intensity
 								0.0f, 2.0f, -7.0f, // XYZ Position
 								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
-	pointLightCount++;
+	//pointLightCount++;
 
 	pointLights[1] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
 								0.2f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
 								0.0f, 5.0f, 5.0f,  // XYZ Position
 								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
-	pointLightCount++;
+	//pointLightCount++;
 
 	// Setting Spot Lights
 	spotLights[0] = SpotLight(1.0f, 1.0f, 1.0f, // RGB Color
@@ -409,14 +441,14 @@ int main()
 							  0.0f, 0.0f, 0.0f, // XYZ Direction
 							  0.3f, 0.2f, 0.1f,
 							  20.0f); // Edge angle
-	spotLightCount++;
+	//spotLightCount++;
 	spotLights[1] = SpotLight(1.0f, 1.0f, 1.0f,
 							  1.0f, 1.0f,
 							  0.0f, 5.0f, 0.0f,
 							  0.0f, -1.0f, 0.0f,
 							  0.3f, 0.2f, 0.1f,
 							  20.0f);
-	spotLightCount++;
+	//spotLightCount++;
 
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
 		   uniformSpecularIntensity = 0, uniformShininess = 0;
