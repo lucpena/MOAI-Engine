@@ -27,6 +27,7 @@
 #include "SpotLight.h"
 #include "Material.h"
 #include "Model.h"
+#include "SkyBox.h"
 
 
 using std::cerr;
@@ -75,6 +76,8 @@ PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
 uint32_t spotLightCount = 0;
 uint32_t pointLightCount = 0;
+
+SkyBox skybox;
 
 Model sponza;
 Model moai;
@@ -274,7 +277,7 @@ void RenderScene()
 	}
 
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, -1.25f, -7.0f));
+	model = glm::translate(model, glm::vec3(0.0f, -1.36f, -7.0f));
 	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
 	model = glm::rotate(model, -90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.0f, 0.5f));
@@ -345,6 +348,16 @@ void OmniShadowMapPass(PointLight* light)
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
+	// Resseting the viewport
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	// Clear the screen with a specific color
+	glClearColor(0.63f, 0.75f, 0.90f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Rendering the Skybox
+	skybox.DrawSkybox(viewMatrix, projectionMatrix);
+
 	// Make shure we are using the right shader
 	shaderList[0].UseShader();
 
@@ -356,13 +369,6 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 	uniformEyePosition = shaderList[0].GetEyePositionLocation();
 	uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
 	uniformShininess = shaderList[0].GetShininessLocation();
-
-	// Resseting the viewport
-	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-
-	// Clear the screen with a specific color
-	glClearColor(0.63f, 0.75f, 0.90f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Setting the Projection Matrix
 	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
@@ -455,10 +461,10 @@ int main()
 	//bistroExterior.LoadModel("Assets/Models/Bistro/exterior.obj", "exterior");
 
 	// Setting up Ambient Light
-	ambientLight = DirectionalLight(2048, 2048,			   // Shadow Buffer (width, height)
-									0.63f, 0.75f, 0.90f,   // RGB Color
-									0.3f, 0.2f,			   // Ambient Intensity, Diffuse Intensity
-									0.0f, -25.0f, -8.0f); // XYZ Direction
+	ambientLight = DirectionalLight(2048, 2048,				// Shadow Buffer (width, height)
+									0.119f, 0.197f, 0.196f, // RGB Color
+									0.8f, 2.0f,				// Ambient Intensity, Diffuse Intensity
+									0.0f, -25.0f, -8.0f);	// XYZ Direction
 
 	// Setting Point Lights
 	pointLights[0] = PointLight(1024, 1024, 	   // Shadow Width and Height 
@@ -493,7 +499,7 @@ int main()
 							  0.1f, 100.0f, // Shadow Near and Far Planes
 							  0.0f, 0.0f, 0.0f,
 							  2.0f, 2.0f,
-							  -1.0f, 5.0f, -2.0f,
+							  -0.5f, 5.0f, -2.0f,
 							  0.0f, -1.0f, -1.25f,
 							  0.9f, 0.2f, 0.1f,
 							  20.0f);
@@ -503,8 +509,8 @@ int main()
 							  0.1f, 100.0f, // Shadow Near and Far Planes
 							  1.0f, 1.0f, 1.0f,
 							  2.0f, 2.0f,
-							  -1.0f, 5.0f, -2.0f,
-							  0.0f, -1.0f, -1.25f,
+							  -0.5f, 3.0f, -9.0f,
+							  0.0f, -1.0f, 1.0f,
 							  0.9f, 0.2f, 0.1f,
 							  20.0f);
 	spotLightCount++;
@@ -512,11 +518,20 @@ int main()
 							  0.1f, 100.0f, // Shadow Near and Far Planes
 							  1.0f, 1.0f, 1.0f,
 							  2.0f, 2.0f,
-							  1.0f, 5.0f, -2.0f,
-							  0.0f, -1.0f, -1.25f,
+							  1.0f, 3.0f, -9.0f,
+							  0.0f, -1.0f, 1.0f,
 							  0.9f, 0.2f, 0.1f,
 							  20.0f);
 	spotLightCount++;
+
+	vector<string> skyboxFaces;
+	skyboxFaces.push_back("Assets/Textures/Skybox/Interstellar/xpos.png"); // POS X
+	skyboxFaces.push_back("Assets/Textures/Skybox/Interstellar/xneg.png"); // NEG X
+	skyboxFaces.push_back("Assets/Textures/Skybox/Interstellar/ypos.png"); // POS Y
+	skyboxFaces.push_back("Assets/Textures/Skybox/Interstellar/yneg.png"); // NEG Y
+	skyboxFaces.push_back("Assets/Textures/Skybox/Interstellar/zpos.png"); // POS Z
+	skyboxFaces.push_back("Assets/Textures/Skybox/Interstellar/zneg.png"); // NEG Z
+	skybox = SkyBox(skyboxFaces, false, false);
 
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
 		   uniformSpecularIntensity = 0, uniformShininess = 0;

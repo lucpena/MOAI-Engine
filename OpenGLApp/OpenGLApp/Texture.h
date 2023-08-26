@@ -4,7 +4,7 @@
 
 #include <GL\glew.h>
 
-#include "stb_image.h"
+#include "Config.h"
 
 class Texture
 {
