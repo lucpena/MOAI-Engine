@@ -48,16 +48,18 @@ float triMaxOffset = 0.5f;
 float triIncrement = 0.0005f;
 float currentAngle = 0.0f;
 
-vector<Mesh*> meshList;
-vector<Shader> shaderList;
-Shader directionalShadowShader;
-
 // Getting the Uniforms (Shaders variables)
 // The camera matrices from the shaders
 GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
 
 // Light uniforms
-GLuint uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0;
+GLuint uniformEyePosition = 0, uniformSpecularIntensity = 0, uniformShininess = 0,
+uniformOmniLightPos = 0, uniformFarPlane = 0;
+
+vector<Mesh *> meshList;
+vector<Shader> shaderList;
+Shader directionalShadowShader;
+Shader omniShadowShader;
 
 Texture obamiumTexture;
 Texture floorTexture;
@@ -188,6 +190,7 @@ void CreateShaders()
 	shaderList.push_back(*_shader);
 
 	directionalShadowShader.CreateFromFile("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+	omniShadowShader.CreateFromFile("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.geo", "Shaders/omni_shadow_map.frag");
 }
 
 void RenderScene()
@@ -299,11 +302,45 @@ void DirectionalShadowMapPass(DirectionalLight* light)
 	// Calculate the Transform
 	directionalShadowShader.SetDirectionalLightTransform(&light->CalculateLightTransform());
 
+	// Validates the shader
+	directionalShadowShader.Validate();
+
 	RenderScene();
 
 	// Unbind for the regular Render Pass;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+}
+
+void OmniShadowMapPass(PointLight* light)
+{
+	// Setting the framebuffer as the same size of the Viewport
+	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+
+	omniShadowShader.UseShader();
+
+	// Getting the model location fom the Shader
+	uniformModel = omniShadowShader.GetModelLocation();
+	uniformOmniLightPos = omniShadowShader.GetOmniLightPosLocation();
+	uniformFarPlane = omniShadowShader.GetFarPlaneLocation();
+
+	// Writing the shadow map
+	light->GetShadowMap()->Write();
+
+	// Clearing the info already in the Depth Buffer
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	glUniform3f(uniformOmniLightPos, light->GetPosition().x, light->GetPosition().y, light->GetPosition().z);
+	glUniform1f(uniformFarPlane, light->GetFarPlane());
+	omniShadowShader.SetLightMatrices(light->CalculateLightTransform());
+
+	// Validates the shader
+	omniShadowShader.Validate();
+
+	RenderScene();
+
+	// Unbind for the regular Render Pass;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
@@ -338,23 +375,25 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
 	// Setting up the Light
 	shaderList[0].SetDirectionalLight(&ambientLight);
-	shaderList[0].SetPointLights(pointLights, pointLightCount);
-	shaderList[0].SetSpotLights(spotLights, spotLightCount);
+	shaderList[0].SetPointLights(pointLights, pointLightCount, 3, 0);
+	shaderList[0].SetSpotLights(spotLights, spotLightCount, 3 + pointLightCount, pointLightCount);
 	shaderList[0].SetDirectionalLightTransform(&ambientLight.CalculateLightTransform());
 
 	// Setting shadow map
-	ambientLight.GetShadowMap()->Read(GL_TEXTURE1);
+	ambientLight.GetShadowMap()->Read(GL_TEXTURE2);
 
-	// ID of the Texture (It's by default already 0 :D)
-	shaderList[0].SetTexture(0);
+	// ID of the Texture (It's by default 0 :D)
+	shaderList[0].SetTexture(1);
 
 	//
-	shaderList[0].SetDirectionalShadowMap(1);
+	shaderList[0].SetDirectionalShadowMap(2);
 
 	// Setting the flashlight
 	// glm::vec3 lowerLight = camera.getCameraPosition();
-	// lowerLight.y -= 0.3f;
+	// lowerLight.y -= 0.5f;
 	// spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+
+	shaderList[0].Validate();
 
 	RenderScene();
 
@@ -418,43 +457,72 @@ int main()
 	// Setting up Ambient Light
 	ambientLight = DirectionalLight(2048, 2048,			   // Shadow Buffer (width, height)
 									0.63f, 0.75f, 0.90f,   // RGB Color
-									0.3f, 0.5f,			   // Ambient Intensity, Diffuse Intensity
+									0.1f, 0.05f,			   // Ambient Intensity, Diffuse Intensity
 									0.0f, -25.0f, -8.0f); // XYZ Direction
 
 	// Setting Point Lights
-	pointLights[0] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
-								0.4f, 0.3f,		   // Ambient Intensity, Diffuse Intensity
-								0.0f, 2.0f, -7.0f, // XYZ Position
+	pointLights[0] = PointLight(1024, 1024, 	   // Shadow Width and Height 
+								0.1f, 100.0f,      // Shadow Near and Far Planes
+								1.0f, 1.0f, 1.0f,  // RGB Color
+								0.9f, 0.8f,		   // Ambient Intensity, Diffuse Intensity
+								0.0f, 4.0f, -5.0f, // XYZ Position
 								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
 	//pointLightCount++;
 
-	pointLights[1] = PointLight(1.0f, 1.0f, 1.0f,  // RGB Color
+	pointLights[1] = PointLight(1024, 1024,		   // Shadow Width and Height
+								0.1f, 100.0f,	   // Shadow Near and Far Planes
+								1.0f, 1.0f, 1.0f,  // RGB Color
 								0.2f, 1.0f,		   // Ambient Intensity, Diffuse Intensity
-								0.0f, 5.0f, 5.0f,  // XYZ Position
-								0.3f, 0.2f, 0.1f); // Constant, Linear, Exponent
+								0.0f, 5.0f, 0.0f,  // XYZ Position
+								0.8f, 0.2f, 0.1f); // Constant, Linear, Exponent
 	//pointLightCount++;
 
-	// Setting Spot Lights
-	spotLights[0] = SpotLight(1.0f, 1.0f, 1.0f, // RGB Color
-							  0.0f, 2.0f,		// Ambient Intensity, Diffuse Intensity
-							  0.0f, 0.0f, 0.0f, // XYZ Position
-							  0.0f, 0.0f, 0.0f, // XYZ Direction
-							  0.3f, 0.2f, 0.1f,
-							  20.0f); // Edge angle
-	//spotLightCount++;
-	spotLights[1] = SpotLight(1.0f, 1.0f, 1.0f,
-							  1.0f, 1.0f,
-							  0.0f, 5.0f, 0.0f,
-							  0.0f, -1.0f, 0.0f,
-							  0.3f, 0.2f, 0.1f,
+	//Setting Spot Lights
+	// spotLights[0] = SpotLight(1024, 1024,		// Shadow Width and Height
+	// 						  0.1f, 100.0f,		// Shadow Near and Far Planes
+	// 						  0.0f, 0.0f, 0.0f, // RGB Color
+	// 						  0.9f, 2.0f,		// Ambient Intensity, Diffuse Intensity
+	// 						  0.0f, 0.0f, 5.0f, // XYZ Position
+	// 						  0.0f, 0.0f, 0.0f, // XYZ Direction
+	// 						  0.3f, 0.2f, 0.1f, // 
+	// 						  20.0f); 			// Edge angle
+	// spotLightCount++;
+
+	// Does not work lol
+	spotLights[0] = SpotLight(1024, 1024,	// Shadow Width and Height
+							  0.1f, 100.0f, // Shadow Near and Far Planes
+							  0.0f, 0.0f, 0.0f,
+							  2.0f, 2.0f,
+							  -1.0f, 5.0f, -2.0f,
+							  0.0f, -1.0f, -1.25f,
+							  0.9f, 0.2f, 0.1f,
 							  20.0f);
-	//spotLightCount++;
+	spotLightCount++;
+
+	spotLights[1] = SpotLight(1024, 1024,	// Shadow Width and Height
+							  0.1f, 100.0f, // Shadow Near and Far Planes
+							  1.0f, 1.0f, 1.0f,
+							  2.0f, 2.0f,
+							  -1.0f, 5.0f, -2.0f,
+							  0.0f, -1.0f, -1.25f,
+							  0.9f, 0.2f, 0.1f,
+							  20.0f);
+	spotLightCount++;
+	spotLights[2] = SpotLight(1024, 1024,	// Shadow Width and Height
+							  0.1f, 100.0f, // Shadow Near and Far Planes
+							  1.0f, 0.0f, 0.0f,
+							  2.0f, 2.0f,
+							  0.0f, 5.0f, -2.0f,
+							  0.0f, -1.0f, -1.25f,
+							  0.9f, 0.2f, 0.1f,
+							  20.0f);
+	spotLightCount++;
 
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
 		   uniformSpecularIntensity = 0, uniformShininess = 0;
 
 	// Setting Projection matrix
-	glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(60.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
 
 	cerr << "\nLoading complete!" << endl;
 
@@ -472,8 +540,26 @@ int main()
 		// Handling the Camera
 		camera.keyControl(mainWindow.getsKeys(), deltaTime);
 		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
+		// if( mainWindow.getsKeys()[GLFW_KEY_G] )
+		// {
+		// 	spotLights[0].Toggle();
+		// 	mainWindow.getsKeys()[GLFW_KEY_G] = false;
+		// }
+
+		// Toggles the TORCH
 
 		DirectionalShadowMapPass(&ambientLight);
+
+		for( size_t i = 0; i < pointLightCount; i++ )
+		{
+			OmniShadowMapPass(&pointLights[i]);
+		}
+
+		for (size_t i = 0; i < spotLightCount; i++)
+		{
+			OmniShadowMapPass(&spotLights[i]);
+		}
+
 		RenderPass(projection, camera.calculateViewMatrix());
 
 		// Swap the front and back buffers to display the rendered frame
