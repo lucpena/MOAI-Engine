@@ -457,7 +457,7 @@ int main()
 	// Setting up Ambient Light
 	ambientLight = DirectionalLight(2048, 2048,			   // Shadow Buffer (width, height)
 									0.63f, 0.75f, 0.90f,   // RGB Color
-									0.1f, 0.05f,			   // Ambient Intensity, Diffuse Intensity
+									0.3f, 0.2f,			   // Ambient Intensity, Diffuse Intensity
 									0.0f, -25.0f, -8.0f); // XYZ Direction
 
 	// Setting Point Lights
@@ -488,7 +488,7 @@ int main()
 	// 						  20.0f); 			// Edge angle
 	// spotLightCount++;
 
-	// Does not work lol
+	// FLASHLIGHT
 	spotLights[0] = SpotLight(1024, 1024,	// Shadow Width and Height
 							  0.1f, 100.0f, // Shadow Near and Far Planes
 							  0.0f, 0.0f, 0.0f,
@@ -510,9 +510,9 @@ int main()
 	spotLightCount++;
 	spotLights[2] = SpotLight(1024, 1024,	// Shadow Width and Height
 							  0.1f, 100.0f, // Shadow Near and Far Planes
-							  1.0f, 0.0f, 0.0f,
+							  1.0f, 1.0f, 1.0f,
 							  2.0f, 2.0f,
-							  0.0f, 5.0f, -2.0f,
+							  1.0f, 5.0f, -2.0f,
 							  0.0f, -1.0f, -1.25f,
 							  0.9f, 0.2f, 0.1f,
 							  20.0f);
