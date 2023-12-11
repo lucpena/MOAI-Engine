@@ -449,7 +449,7 @@ int main()
 	sponza.LoadModel("Assets/Models/Sponza/sponza.obj", "sponza");
 
 	moai = Model();
-	moai.LoadModel("Assets/Models/Moai/moai.obj", "moai");
+	//moai.LoadModel("Assets/Models/Moai/moai.obj", "moai");
 
 	sponza2 = Model();
 	//sponza2.LoadModel("Assets/Models/Sponza2/sponza.obj", "sponza2");
