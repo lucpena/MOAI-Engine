@@ -80,10 +80,10 @@ uint32_t pointLightCount = 0;
 SkyBox skybox;
 
 Model sponza;
-Model moai;
-Model sponza2;
-Model lostEmpire;
-Model bistroExterior;
+Model room;
+Model briar;
+Model formula1;
+Model testModel;
 
 //---------------------------------------------------------------------------
 
@@ -139,51 +139,51 @@ void CalcAverageNormals(uint32_t* indices, uint32_t indiceCount, GLfloat* vertic
 // Function to create a simple triangle in OpenGL
 void CreateObjects()
 {
-	uint32_t indices[] = 
-	{
-		0, 3, 1,
-		1, 3, 2,
-		2, 3, 0,
-		0, 1, 2
-	};
+	// uint32_t indices[] = 
+	// {
+	// 	0, 3, 1,
+	// 	1, 3, 2,
+	// 	2, 3, 0,
+	// 	0, 1, 2
+	// };
 
-	// Define the vertex data for the triangle
-	GLfloat vertices[] = 
-	{
-	//   X      Y     Z       U     V    nX    nY    nZ
-		-1.0f, -1.0f, 0.6f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 2.0f,   0.5f, 0.0f,  0.0f, 0.0f, 0.0f,
-		1.0f, -1.0f, -0.6f,   1.0f, 0.0f,  0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,    0.5f, 1.0f,  0.0f, 0.0f, 0.0f
-	};
+	// // Define the vertex data for the triangle
+	// GLfloat vertices[] = 
+	// {
+	// //   X      Y     Z       U     V    nX    nY    nZ
+	// 	-1.0f, -1.0f, 0.6f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f,
+	// 	0.0f, -1.0f, 2.0f,   0.5f, 0.0f,  0.0f, 0.0f, 0.0f,
+	// 	1.0f, -1.0f, -0.6f,   1.0f, 0.0f,  0.0f, 0.0f, 0.0f,
+	// 	0.0f, 1.0f, 0.0f,    0.5f, 1.0f,  0.0f, 0.0f, 0.0f
+	// };
 
-	uint32_t floorIndices[] =  
-	{
-		0, 2, 1,
-		1, 2, 3
-	};
+	// uint32_t floorIndices[] =  
+	// {
+	// 	0, 2, 1,
+	// 	1, 2, 3
+	// };
 
-	GLfloat floorVertices[] = 
-	{
-		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, -1.0f, 0.0f,
-		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, -1.0f, 0.0f,
-		-10.0f, 0.0f, 10.0f,	0.f, 10.0f,		0.0f, -1.0f, 0.0f,
-		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, -1.0f, 0.0f
-	};
+	// GLfloat floorVertices[] = 
+	// {
+	// 	-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, -1.0f, 0.0f,
+	// 	10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, -1.0f, 0.0f,
+	// 	-10.0f, 0.0f, 10.0f,	0.f, 10.0f,		0.0f, -1.0f, 0.0f,
+	// 	10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, -1.0f, 0.0f
+	// };
 
-    CalcAverageNormals(indices, 12, vertices, 32, 8, 5);
+    // CalcAverageNormals(indices, 12, vertices, 32, 8, 5);
 
-	Mesh* triangleMesh = new Mesh();//    vertices, indices
-    triangleMesh->CreateMesh(vertices, indices, 32, 12);
-    meshList.push_back(triangleMesh);
+	// Mesh* triangleMesh = new Mesh();//    vertices, indices
+    // triangleMesh->CreateMesh(vertices, indices, 32, 12);
+    // meshList.push_back(triangleMesh);
 
-    Mesh* triangleMesh2 = new Mesh();//    vertices, indices
-    triangleMesh2->CreateMesh(vertices, indices, 32, 12);
-    meshList.push_back(triangleMesh2);
+    // Mesh* triangleMesh2 = new Mesh();//    vertices, indices
+    // triangleMesh2->CreateMesh(vertices, indices, 32, 12);
+    // meshList.push_back(triangleMesh2);
 
-	Mesh* floorMesh = new Mesh();
-	floorMesh->CreateMesh(floorVertices, floorIndices, 32, 6);
-	meshList.push_back(floorMesh);
+	// Mesh* floorMesh = new Mesh();
+	// floorMesh->CreateMesh(floorVertices, floorIndices, 32, 6);
+	// meshList.push_back(floorMesh);
 }
 
 void CreateShaders()
@@ -249,41 +249,51 @@ void RenderScene()
 	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 	sponza.RenderModel();
 
-	// // Adding the SPONZA 2 model
-	// // model = glm::mat4(1.0f);
-	// model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-	// model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
-	// model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-	// // model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	// sponza2.RenderModel();
-
-	// Adding the Bistro Exterior model
-	// model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, -1.5f, -10.0f));
-	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
-	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	// Adding the Room
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, 1.0f, -5.0f));
+	model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
 	// model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	//   model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	//bistroExterior.RenderModel();
+	//room.RenderModel();
+
+	// Adding the Briar
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, -1.028f, -12.0f));
+	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+	//model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	//  model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	briar.RenderModel();
+
+	// Adding Formula 1 Ferrari
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, -1.0f, -8.0f));
+	model = glm::scale(model, glm::vec3(0.007f, 0.007f, 0.007f));
+	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	//   model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	formula1.RenderModel();
 
 	// Adding MOAI Model
-	currentAngle += 0.01f;
-	if (currentAngle >= 360)
-	{
-		currentAngle = 0;
-	}
+	// currentAngle += 0.01f;
+	// if (currentAngle >= 360)
+	// {
+	// 	currentAngle = 0;
+	// }
 
-	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, -1.36f, -7.0f));
-	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
-	model = glm::rotate(model, -90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-	model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.0f, 0.5f));
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	moai.RenderModel();
+	// model = glm::mat4(1.0f);
+	// model = glm::translate(model, glm::vec3(0.0f, -1.36f, -7.0f));
+	// model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+	// model = glm::rotate(model, -90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+	// model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.0f, 0.5f));
+	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	// moai.RenderModel();
 }
 
 void DirectionalShadowMapPass(DirectionalLight* light)
@@ -412,6 +422,9 @@ int main()
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleTextAttribute(hConsole, 10); // Set text color to green
 
+	// Sets VSync off
+	//glfwSwapInterval(0);
+
 	cerr << "--------------------------------------------------------" << endl;
 	cerr << "| MOAI ENGINE v1.0 - OpenGL 3.3                        |" << endl;
 	cerr << "--------------------------------------------------------\n\n" << endl;
@@ -448,22 +461,22 @@ int main()
 	sponza = Model();
 	sponza.LoadModel("Assets/Models/Sponza/sponza.obj", "sponza");
 
-	moai = Model();
-	//moai.LoadModel("Assets/Models/Moai/moai.obj", "moai");
+	room = Model();
+	//room.LoadModel("Assets/Models/Room/living_room.obj", "room");
 
-	sponza2 = Model();
-	//sponza2.LoadModel("Assets/Models/Sponza2/sponza.obj", "sponza2");
+	briar = Model();
+	briar.LoadModel("Assets/Models/Briar/scene.gltf", "briar");
 
-	lostEmpire = Model();
-	//lostEmpire.LoadModel("Assets/Models/Lost Empire/lost_empire.obj", "lost_empire");
-
-	bistroExterior = Model();
-	//bistroExterior.LoadModel("Assets/Models/Bistro/exterior.obj", "exterior");
+	formula1 = Model();
+	formula1.LoadModel("Assets/Models/FF1/f1.fbx", "ff1");
+	
+	testModel = Model();
+	//testModel.LoadModel("Assets/Models/TestModel/scene.gltf", "testModel");
 
 	// Setting up Ambient Light
 	ambientLight = DirectionalLight(2048, 2048,				// Shadow Buffer (width, height)
-									0.119f, 0.197f, 0.196f, // RGB Color
-									0.8f, 2.0f,				// Ambient Intensity, Diffuse Intensity
+									1.0f, 1.07f, 1.0f,		// RGB Color
+									0.3f, 0.7f,				// Ambient Intensity, Diffuse Intensity
 									0.0f, -25.0f, -8.0f);	// XYZ Direction
 
 	// Setting Point Lights
@@ -555,6 +568,7 @@ int main()
 		// Handling the Camera
 		camera.keyControl(mainWindow.getsKeys(), deltaTime);
 		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
+		
 		// if( mainWindow.getsKeys()[GLFW_KEY_G] )
 		// {
 		// 	spotLights[0].Toggle();
