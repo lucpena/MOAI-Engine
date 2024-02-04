@@ -94,7 +94,8 @@ void SkyBox::DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
     // Cut the transform data from the original matrix. Keeps at the origin
     viewMatrix = glm::mat4(glm::mat3(viewMatrix));
 
-    glDepthMask(GL_FALSE);
+    // glDepthMask(GL_FALSE);
+    glDepthFunc(GL_LEQUAL);
 
     skyShader->UseShader();
 
@@ -111,7 +112,8 @@ void SkyBox::DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 
     skyMesh->RenderMesh();
 
-    glDepthMask(GL_TRUE);
+    // glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
 }
 
 SkyBox::~SkyBox()

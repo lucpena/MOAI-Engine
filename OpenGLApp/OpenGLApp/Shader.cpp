@@ -214,6 +214,16 @@ void Shader::SetLightMatrices(vector<glm::mat4> lightMatrices)
     }
 }
 
+void Shader::SetInt(const string &name, int value) const
+{ 
+    glUniform1i(glGetUniformLocation(shaderID, name.c_str()), value); 
+}
+
+void Shader::SetFloat(const std::string &name, float value) const
+{
+    glUniform1f(glGetUniformLocation(shaderID, name.c_str()), value);
+}
+
 void Shader::UseShader()
 {
     glUseProgram(shaderID);

@@ -9,7 +9,7 @@ void Model::LoadModel(const string& fileName, const string& objName)
     cerr << "\nLoading model [" << objName << "]..." << endl;
 
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+    const aiScene *scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
 
     if (!scene)
     {
@@ -24,7 +24,7 @@ void Model::LoadModel(const string& fileName, const string& objName)
 void Model::LoadModel(const string &fileName, const string &objName, bool invertedTexture)
 {
     Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices);
+    const aiScene *scene = importer.ReadFile(fileName, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_CalcTangentSpace);
     // const aiScene *scene = importer.ReadFile(fileName, aiProcess_Triangulate );
 
     if( !scene )
@@ -156,31 +156,98 @@ void Model::LoadMaterials(const aiScene* scene, const string &objName, bool inve
 
                 textureList[i] = new Texture(texPath.c_str());
 
-                 if( fileExtension == "png" )
-                 {
-                     cerr << "Loading " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
-                     if (!textureList[i]->LoadTextureA(invertedTexture))
-                     {
-                         cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"<< endl;
-                         delete textureList[i];
-                         textureList[i] = nullptr;
-                     }
-                 }
+                cerr << "Loading DIFFUSE " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+                if (!textureList[i]->LoadTexture(invertedTexture))
+                {
+                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
+                         << endl;
+                    delete textureList[i];
+                    textureList[i] = nullptr;
+                }
+            }
+        }
 
-                 if (fileExtension != "png")
-                 {
-                     cerr << "Loading " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
-                     if (!textureList[i]->LoadTextureA(invertedTexture))
-                     {
-                         cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n" << endl;
-                         delete textureList[i];
-                         textureList[i] = nullptr;
-                     }
-                 }
+        if (material->GetTextureCount(aiTextureType_SPECULAR))
+        {
+            aiString path;
+            if (material->GetTexture(aiTextureType_SPECULAR, 0, &path) == AI_SUCCESS)
+            {
+                // Fixes the path if it is relative
+                int32_t idx = string(path.data).rfind("\\");
+                string fileName = string(path.data).substr(idx + 1);
 
-                // everything white lol
-                //textureList[i] = new Texture("Assets/Textures/plain.png");
-                //textureList[i]->LoadTextureA();
+                string texPath = string("Assets/Models/Textures/") + objName + string("/") + fileName;
+
+                // Gettin the file extension
+                int32_t extIndex = string(fileName).rfind(".");
+                string fileExtension = string(fileName).substr(extIndex + 1);
+
+                textureList[i] = new Texture(texPath.c_str());
+
+                cerr << "Loading SPECULAR " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+                if (!textureList[i]->LoadTexture(invertedTexture))
+                {
+                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
+                         << endl;
+                    delete textureList[i];
+                    textureList[i] = nullptr;
+                }
+            }
+        }
+
+        if (material->GetTextureCount(aiTextureType_HEIGHT)) // NORMAL
+        {
+            aiString path;
+            if (material->GetTexture(aiTextureType_HEIGHT, 0, &path) == AI_SUCCESS)
+            {
+                // Fixes the path if it is relative
+                int32_t idx = string(path.data).rfind("\\");
+                string fileName = string(path.data).substr(idx + 1);
+
+                string texPath = string("Assets/Models/Textures/") + objName + string("/") + fileName;
+
+                // Gettin the file extension
+                int32_t extIndex = string(fileName).rfind(".");
+                string fileExtension = string(fileName).substr(extIndex + 1);
+
+                textureList[i] = new Texture(texPath.c_str());
+
+                cerr << "Loading HEIGHT(NORMAL) " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+                if (!textureList[i]->LoadTexture(invertedTexture))
+                {
+                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
+                         << endl;
+                    delete textureList[i];
+                    textureList[i] = nullptr;
+                }
+            }
+        }
+
+        if (material->GetTextureCount(aiTextureType_AMBIENT)) // HEIGHT MAP
+        {
+            aiString path;
+            if (material->GetTexture(aiTextureType_AMBIENT, 0, &path) == AI_SUCCESS)
+            {
+                // Fixes the path if it is relative
+                int32_t idx = string(path.data).rfind("\\");
+                string fileName = string(path.data).substr(idx + 1);
+
+                string texPath = string("Assets/Models/Textures/") + objName + string("/") + fileName;
+
+                // Gettin the file extension
+                int32_t extIndex = string(fileName).rfind(".");
+                string fileExtension = string(fileName).substr(extIndex + 1);
+
+                textureList[i] = new Texture(texPath.c_str());
+
+                cerr << "Loading AMBIENT " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+                if (!textureList[i]->LoadTexture(invertedTexture))
+                {
+                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
+                         << endl;
+                    delete textureList[i];
+                    textureList[i] = nullptr;
+                }
             }
         }
 
@@ -188,7 +255,7 @@ void Model::LoadMaterials(const aiScene* scene, const string &objName, bool inve
         if( !textureList[i] )
         {
             textureList[i] = new Texture("Assets/Textures/plain.png");
-            textureList[i]->LoadTextureA();
+            textureList[i]->LoadTexture();
         }
     }
 }

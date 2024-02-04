@@ -49,6 +49,8 @@ float triMaxOffset = 0.5f;
 float triIncrement = 0.0005f;
 float currentAngle = 0.0f;
 
+float gamma = 2.2f;
+
 // Getting the Uniforms (Shaders variables)
 // The camera matrices from the shaders
 GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0;
@@ -61,6 +63,7 @@ vector<Mesh *> meshList;
 vector<Shader> shaderList;
 Shader directionalShadowShader;
 Shader omniShadowShader;
+Shader postShader;
 
 Texture obamiumTexture;
 Texture floorTexture;
@@ -93,97 +96,27 @@ static const char *vShader = "Shaders/shader.vert";
 // Fragment Shader
 static const char* fShader = "Shaders/shader.frag";
 
-void CalcAverageNormals(uint32_t* indices, uint32_t indiceCount, GLfloat* vertices, uint32_t verticesCount, uint32_t vLength, uint32_t normalOffset)
-{
-	for( size_t i = 0; i < indiceCount; i += 3 )
-	{
-		uint32_t in0 = indices[i] * vLength;
-        uint32_t in1 = indices[i + 1] * vLength;
-        uint32_t in2 = indices[i + 2] * vLength;
-
-        // The Vector product of two vectors, a and b, is denoted by a × b. Its resultant vector is perpendicular to a and b, in other words, the NORMAL!!! UwU
-        glm::vec3 v1(vertices[in1] - vertices[in0], vertices[in1 + 1] - vertices[in0 + 1], vertices[in1 + 2] - vertices[in0 + 2]);
-        glm::vec3 v2(vertices[in2] - vertices[in0], vertices[in2 + 1] - vertices[in0 + 1], vertices[in2 + 2] - vertices[in0 + 2]);
-        glm::vec3 normal = glm::cross(v1, v2);
-        normal = glm::normalize(normal);
-
-        in0 += normalOffset;
-        in1 += normalOffset;
-        in2 += normalOffset;
-
-        vertices[in0 + 0] += normal.x;
-        vertices[in0 + 1] += normal.y;
-        vertices[in0 + 2] += normal.z;
-
-        vertices[in1 + 0] += normal.x;
-        vertices[in1 + 1] += normal.y;
-        vertices[in1 + 2] += normal.z;
-
-        vertices[in2 + 0] += normal.x;
-        vertices[in2 + 1] += normal.y;
-        vertices[in2 + 2] += normal.z;
-    }
-
-    for( uint32_t i = 0; i < verticesCount / vLength; i++  )
-    {
-        uint32_t nOffeset = i * vLength + normalOffset;
-        glm::vec3 vec(vertices[nOffeset], vertices[nOffeset + 1], vertices[nOffeset + 2]);
-        vec = glm::normalize(vec);
-
-        vertices[nOffeset + 0] = vec.x;
-        vertices[nOffeset + 1] = vec.y;
-        vertices[nOffeset + 2] = vec.z;
-    }
-}
-
 // Function to create a simple triangle in OpenGL
 void CreateObjects()
 {
-	// uint32_t indices[] = 
-	// {
-	// 	0, 3, 1,
-	// 	1, 3, 2,
-	// 	2, 3, 0,
-	// 	0, 1, 2
-	// };
 
-	// // Define the vertex data for the triangle
-	// GLfloat vertices[] = 
-	// {
-	// //   X      Y     Z       U     V    nX    nY    nZ
-	// 	-1.0f, -1.0f, 0.6f, 0.0f, 0.0f,  0.0f, 0.0f, 0.0f,
-	// 	0.0f, -1.0f, 2.0f,   0.5f, 0.0f,  0.0f, 0.0f, 0.0f,
-	// 	1.0f, -1.0f, -0.6f,   1.0f, 0.0f,  0.0f, 0.0f, 0.0f,
-	// 	0.0f, 1.0f, 0.0f,    0.5f, 1.0f,  0.0f, 0.0f, 0.0f
-	// };
+	uint32_t floorIndices[] =  
+	{
+		0, 2, 1,
+		1, 2, 3
+	};
 
-	// uint32_t floorIndices[] =  
-	// {
-	// 	0, 2, 1,
-	// 	1, 2, 3
-	// };
+	GLfloat floorVertices[] = 
+	{
+		-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, -1.0f, 0.0f,
+		10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, -1.0f, 0.0f,
+		-10.0f, 0.0f, 10.0f,	0.f, 10.0f,		0.0f, -1.0f, 0.0f,
+		10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, -1.0f, 0.0f
+	};
 
-	// GLfloat floorVertices[] = 
-	// {
-	// 	-10.0f, 0.0f, -10.0f,	0.0f, 0.0f,		0.0f, -1.0f, 0.0f,
-	// 	10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, -1.0f, 0.0f,
-	// 	-10.0f, 0.0f, 10.0f,	0.f, 10.0f,		0.0f, -1.0f, 0.0f,
-	// 	10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, -1.0f, 0.0f
-	// };
-
-    // CalcAverageNormals(indices, 12, vertices, 32, 8, 5);
-
-	// Mesh* triangleMesh = new Mesh();//    vertices, indices
-    // triangleMesh->CreateMesh(vertices, indices, 32, 12);
-    // meshList.push_back(triangleMesh);
-
-    // Mesh* triangleMesh2 = new Mesh();//    vertices, indices
-    // triangleMesh2->CreateMesh(vertices, indices, 32, 12);
-    // meshList.push_back(triangleMesh2);
-
-	// Mesh* floorMesh = new Mesh();
-	// floorMesh->CreateMesh(floorVertices, floorIndices, 32, 6);
-	// meshList.push_back(floorMesh);
+	Mesh* floorMesh = new Mesh();
+	floorMesh->CreateMesh(floorVertices, floorIndices, 32, 6);
+	meshList.push_back(floorMesh);
 }
 
 void CreateShaders()
@@ -194,53 +127,26 @@ void CreateShaders()
 
 	directionalShadowShader.CreateFromFile("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
 	omniShadowShader.CreateFromFile("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.geo", "Shaders/omni_shadow_map.frag");
+	postShader.CreateFromFile("Shaders/post-processing.vert", "Shaders/post-processing.frag");
 }
 
 void RenderScene()
 {
 	// // Defining the model matrix for the first piramyd
-	// glm::mat4 model(1.0f);
-
-	// // Translate, Rotate and Scale
-	// model = glm::translate(model, glm::vec3(2.0f, 0.0f, -4.0f));
-	// model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, 0.5f, 0.0f));
-	// model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
-
-	// // Attach the Model matrix
-	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-
-	// // Attach the Texture
-	// obamiumTexture.UseTexture();
-
-	// // Set the Material for the mesh
-	// shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-
-	// // Rendering the mesh
-	// meshList[0]->RenderMesh();
-
-	// // Defining the model matrix for the second piramyd
-	// model = glm::mat4(1.0f);
-	// model = glm::translate(model, glm::vec3(-2.0f, 0.0f, -4.0f));
-	// model = glm::rotate(model, currentAngle * toRadians, glm::vec3(0.0f, -0.5f, 0.0f));
-	// model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
-	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	// meshList[1]->RenderMesh();
-
-	// // Addind the Floor
-	// model = glm::mat4(1.0f);
-	// model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-	// model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-	// glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	// floorTexture.UseTexture();
-	// plainTexture.UseTexture();
-	// dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-	// meshList[2]->RenderMesh();
-
 	glm::mat4 model(1.0f);
 
+	// // Addind the Floor
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	floorTexture.UseTexture();
+	//plainTexture.UseTexture();
+	dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	meshList[0]->RenderMesh();
+
 	// Adding the SPONZA model
-	// model = glm::mat4(1.0f);
+	model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(0.5f, -1.0f, -8.0f));
 	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
 	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -261,7 +167,7 @@ void RenderScene()
 
 	// Adding the Briar
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, -1.028f, -12.0f));
+	model = glm::translate(model, glm::vec3(-3.0f, -2.0f, -7.0f));
 	model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
 	//model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
 	//  model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -271,12 +177,12 @@ void RenderScene()
 
 	// Adding Formula 1 Ferrari
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, -1.0f, -8.0f));
-	model = glm::scale(model, glm::vec3(0.007f, 0.007f, 0.007f));
+	model = glm::translate(model, glm::vec3(3.0f, -2.0f, -5.0f));
+	model = glm::scale(model, glm::vec3(0.009f, 0.009f, 0.009f));
 	model = glm::rotate(model, 90 * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 	//   model = glm::rotate(model, 90 * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
 	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+	veryShinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
 	formula1.RenderModel();
 
 	// Adding MOAI Model
@@ -362,7 +268,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
 	// Clear the screen with a specific color
-	glClearColor(0.63f, 0.75f, 0.90f, 1.0f);
+	glClearColor(pow(0.63f, 1.0f / gamma), pow(0.75f, 1.0f / gamma), pow(0.90f, 1.0f / gamma), 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Rendering the Skybox
@@ -372,7 +278,6 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 	shaderList[0].UseShader();
 
 	// Use the shader program for rendering
-	shaderList[0].UseShader();
 	uniformModel = shaderList[0].GetModelLocation();
 	uniformProjection = shaderList[0].GetProjectionLocation();
 	uniformView = shaderList[0].GetViewLocation();
@@ -415,6 +320,13 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
 }
 
+void PostProcessingPass()
+{
+	shaderList[0].UseShader();
+	shaderList[0].SetInt("screenTexture", 0);
+	shaderList[0].SetFloat("gamma", gamma);
+}
+
 // Main function for the OpenGL application
 int main()
 {
@@ -445,12 +357,11 @@ int main()
 	// obamiumTexture = Texture("Assets/Textures/obamium.png");
 	// obamiumTexture.LoadTextureA();
 
-	// floorTexture = Texture("Assets/Textures/ground_01.png");
-	// floorTexture.LoadTextureA();
+	floorTexture = Texture("Assets/Textures/ground_01.png");
+	floorTexture.LoadTexture();
 
 	// plainTexture = Texture("Assets/Textures/plain.png");
 	// plainTexture.LoadTextureA();
-
 
 	// Setting the materials for Phong Shading
 	veryShinyMaterial = Material(4.0f, 256);
@@ -459,7 +370,7 @@ int main()
 
 	// Setting the models
 	sponza = Model();
-	sponza.LoadModel("Assets/Models/Sponza/sponza.obj", "sponza");
+	//sponza.LoadModel("Assets/Models/Sponza/sponza.obj", "sponza");
 
 	room = Model();
 	//room.LoadModel("Assets/Models/Room/living_room.obj", "room");
@@ -475,8 +386,8 @@ int main()
 
 	// Setting up Ambient Light
 	ambientLight = DirectionalLight(2048, 2048,				// Shadow Buffer (width, height)
-									1.0f, 1.07f, 1.0f,		// RGB Color
-									0.3f, 0.7f,				// Ambient Intensity, Diffuse Intensity
+									1.0f, 1.0f, 1.0f,		// RGB Color
+									0.1f, 0.2f,				// Ambient Intensity, Diffuse Intensity
 									0.0f, -25.0f, -8.0f);	// XYZ Direction
 
 	// Setting Point Lights
@@ -552,7 +463,7 @@ int main()
 	// Setting Projection matrix
 	glm::mat4 projection = glm::perspective(glm::radians(60.0f), (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
 
-	cerr << "\nLoading complete!" << endl;
+	cerr << "\nLoading complete!\n\n" << endl;
 
 	// Render loop: keeps the window open until the user closes it
 	while (!mainWindow.getShouldClose())
@@ -569,11 +480,26 @@ int main()
 		camera.keyControl(mainWindow.getsKeys(), deltaTime);
 		camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 		
-		// if( mainWindow.getsKeys()[GLFW_KEY_G] )
-		// {
-		// 	spotLights[0].Toggle();
-		// 	mainWindow.getsKeys()[GLFW_KEY_G] = false;
-		// }
+		if (mainWindow.getsKeys()[GLFW_KEY_KP_7])
+		{
+		    if (gamma > 0.0f)
+		        gamma -= 0.001f;
+		    else
+		        gamma = 0.0f;
+
+			cout << "GAMMA: " << gamma << "\r";
+		}
+		else if (mainWindow.getsKeys()[GLFW_KEY_KP_8])
+		{
+			gamma = 2.2f;
+			cout << "GAMMA: " << gamma << "\r";
+			mainWindow.getsKeys()[GLFW_KEY_KP_8] = false;
+		}
+		else if (mainWindow.getsKeys()[GLFW_KEY_KP_9])
+		{
+		    gamma += 0.001f;
+			cout << "GAMMA: " << gamma << "\r";
+		}
 
 		// Toggles the TORCH
 
@@ -590,6 +516,8 @@ int main()
 		}
 
 		RenderPass(projection, camera.calculateViewMatrix());
+
+		PostProcessingPass();
 
 		// Swap the front and back buffers to display the rendered frame
 		mainWindow.swapBuffers();

@@ -52,6 +52,9 @@ int Window::Initialise()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
+    // MultiSampling Anti Aliasing
+    glfwWindowHint(GLFW_SAMPLES, 1);
+
     // Create the window
     mainWindow = glfwCreateWindow(width, height, "MOAI ENGINE", nullptr, nullptr);
     if (!mainWindow)
@@ -84,6 +87,9 @@ int Window::Initialise()
     }
 
     glEnable(GL_DEPTH_TEST);
+
+    // Enables MSAA
+    glEnable(GL_MULTISAMPLE);
 
     // Create Viewport
     glViewport(0, 0, bufferWidth, bufferHeight);
@@ -131,6 +137,7 @@ void Window::handleKeys(GLFWwindow *window, int key, int code, int action, int m
             theWindow->keys[key] = false;
         }
     }
+
 }
 
 void Window::handleMouse(GLFWwindow *window, double xPos, double yPos)

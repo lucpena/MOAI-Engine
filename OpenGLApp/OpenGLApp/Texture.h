@@ -14,9 +14,7 @@ public:
     Texture(const char* fileLoc);
 
     bool LoadTexture(bool invertedTexture);
-    bool LoadTextureA(bool invertedTexture);
     bool LoadTexture();
-    bool LoadTextureA();
     void UseTexture();
     void ClearTexture();
 

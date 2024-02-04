@@ -12,7 +12,6 @@ out vec4 colour;
 const int MAX_POINT_LIGHTS = 16;
 const int MAX_SPOT_LIGHTS  = 16;
 
-
 struct Light
 {
 	vec3 colour;
@@ -68,6 +67,9 @@ uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 uniform Material material;
 
 uniform vec3 eyePosition;
+
+uniform float gamma;
+
 
 vec3 gridSamplingDisk[20] = vec3[]
 (
@@ -186,7 +188,10 @@ vec4 CalcPointLight(PointLight pLight, int shadowIndex)
 	float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex);
 
 	vec4 colour = CalcLightByDirection(pLight.base, direction, shadowFactor);
+	// float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant; // AX^2 + BX + C
+	
 	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant; // AX^2 + BX + C
+	attenuation = pow(attenuation, 1.0/2.2);
 
 	return colour/attenuation;
 }
@@ -238,6 +243,8 @@ void main()
 	finalColour += CalcPointLights();
 	finalColour += CalcSpotLights();
 
+	// Gamma correction
+    finalColour.rgb = pow(finalColour.rgb, vec3(1.0 / gamma));
+
 	colour = texture(theTexture, TexCoord0) * finalColour;
-	//colour = vColor * finalColour;
 }

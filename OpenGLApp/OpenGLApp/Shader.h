@@ -52,6 +52,9 @@ public:
     void SetDirectionalLightTransform(glm::mat4* lTransform);
     void SetLightMatrices(vector<glm::mat4> lightMatrices);
 
+    void SetInt(const string &name, int value) const;
+    void SetFloat(const std::string &name, float value) const;
+
     void UseShader();
     void ClearShader();
 
