@@ -7,7 +7,7 @@ constexpr auto MAX_POINT_LIGHTS = 16;
 constexpr auto MAX_SPOT_LIGHTS = 16;
 constexpr auto MAX_LIGHTS = MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS;
 
-constexpr auto WINDOW_WIDTH = 1600;
-constexpr auto WINDOW_HEIGHT = 900;
+constexpr auto WINDOW_WIDTH = 1900;
+constexpr auto WINDOW_HEIGHT = 980;
 
 #endif

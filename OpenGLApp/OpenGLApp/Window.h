@@ -5,6 +5,11 @@
 #include <GL\glew.h>
 #include <GLFW\glfw3.h>
 
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::string;
+
 class Window
 {
 public:
@@ -12,7 +17,7 @@ public:
 
     Window(GLint windowWidth, GLint windowHeight);
 
-    int Initialise();
+    GLFWwindow* Initialise(string windowName);
 
     GLint getBufferWidth() { return bufferWidth; }
     GLint getBufferHeight() { return bufferHeight; }

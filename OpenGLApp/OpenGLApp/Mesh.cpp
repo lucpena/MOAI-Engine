@@ -70,13 +70,13 @@ void Mesh::RenderMesh()
     // Bind the vertex array object containing the triangle data
     glBindVertexArray(VAO);
 
-    //
+    //  Bind the index buffer object
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
 
     // Draw the triangle using OpenGL draw call
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 
-    // Unbind the IBO
+    // Unbind the index buffer object
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Unbind the vertex array object

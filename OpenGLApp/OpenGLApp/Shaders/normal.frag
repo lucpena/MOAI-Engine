@@ -2,10 +2,10 @@
 
 in vec4 vColor;
 in vec2 TexCoord0;
-in vec2 NormalMap;
 in vec3 Normal;
 in vec3 FragPos;
 in vec4 DirectionalLightSpacePos;
+in vec2 NormalTexCoord0;
 
 out vec4 colour;
 
@@ -62,15 +62,30 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 uniform sampler2D theTexture;
-uniform sampler2D normalMapTexture;
+uniform sampler2D normalMapTexture; // Textura do Normal Map
 uniform sampler2D directionalShadowMap;
 uniform OmniShadowMap omniShadowMaps[MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS];
 
 uniform Material material;
 
 uniform vec3 eyePosition;
-
 uniform float gamma;
+
+vec3 CalcNormalFromMap()
+{
+    vec3 tangentNormal = texture(normalMapTexture, TexCoord0).rgb * 2.0 - 1.0;
+    vec3 Q1 = dFdx(FragPos);
+    vec3 Q2 = dFdy(FragPos);
+    vec2 st1 = dFdx(TexCoord0);
+    vec2 st2 = dFdy(TexCoord0);
+
+    vec3 N = normalize(Normal); // Normal do modelo
+
+    vec3 T = normalize(Q1 * st2.t - Q2 * st1.t);
+    vec3 B = -normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+    return normalize(TBN * tangentNormal);
+}
 
 
 vec3 gridSamplingDisk[20] = vec3[]
@@ -82,6 +97,23 @@ vec3 gridSamplingDisk[20] = vec3[]
    vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
 );
 
+vec3 CalculateTangentSpaceNormal()
+{
+    vec3 q0 = dFdx(FragPos);
+    vec3 q1 = dFdy(FragPos);
+    vec2 st0 = dFdx(TexCoord0);
+    vec2 st1 = dFdy(TexCoord0);
+
+    vec3 tangent = normalize((q0 * st1.t - q1 * st0.t) / (st0.s * st1.t - st1.s * st0.t));
+    vec3 bitangent = normalize((-q0 * st1.s + q1 * st0.s) / (st0.s * st1.t - st1.s * st0.t));
+
+    mat3 TBN = transpose(mat3(tangent, bitangent, Normal));
+    
+    vec3 mapNormal = texture(normalMapTexture, TexCoord0).rgb * 2.0 - 1.0;
+    mapNormal = normalize(mapNormal * TBN);
+
+    return mapNormal;
+}
 
 float CalcDirectionalShadowFactor(DirectionalLight light)
 {
@@ -145,7 +177,7 @@ float CalcOmniShadowFactor(PointLight light, int shadowIndex)
 	//return shadow;
 }
 
-vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
+vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor, vec3 normal)
 {
 	vec4 ambientColour = vec4(light.colour, 1.0f) * light.ambientIntensity;
 
@@ -177,42 +209,42 @@ vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 
 vec4 CalcDirectionalLight()
 {
-	float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor);
+    float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
+    vec3 normal = CalcNormalFromMap(); // Use a normal calculada a partir do Normal Map
+
+    return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor, normal); // Passa a normal para a função CalcLightByDirection
 }
 
 vec4 CalcPointLight(PointLight pLight, int shadowIndex)
 {
-	vec3 direction = FragPos - pLight.position;
-	float distance = length(direction);
-	direction = normalize(direction);
+    vec3 direction = FragPos - pLight.position;
+    float distance = length(direction);
+    direction = normalize(direction);
+    float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex);
+    vec3 normal = CalcNormalFromMap(); // Use a normal calculada a partir do Normal Map
 
-	float shadowFactor = CalcOmniShadowFactor(pLight, shadowIndex);
+    vec4 colour = CalcLightByDirection(pLight.base, direction, shadowFactor, normal); // Passa a normal para a função CalcLightByDirection
+    float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant;
+    attenuation = pow(attenuation, 1.0/2.2);
 
-	vec4 colour = CalcLightByDirection(pLight.base, direction, shadowFactor);
-	// float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant; // AX^2 + BX + C
-	
-	float attenuation = pLight.exponent * distance * distance + pLight.linear * distance + pLight.constant; // AX^2 + BX + C
-	attenuation = pow(attenuation, 1.0/2.2);
-
-	return colour/attenuation;
+    return colour/attenuation;
 }
 
 vec4 CalcSpotLight(SpotLight sLight, int shadowIndex)
 {
-	vec3 rayDirection = normalize(FragPos - sLight.base.position);
-	float slFactor = dot(rayDirection, sLight.direction);
+    vec3 rayDirection = normalize(FragPos - sLight.base.position);
+    float slFactor = dot(rayDirection, sLight.direction);
 
-	if( slFactor > sLight.edge )
-	{
-		vec4 colour = CalcPointLight(sLight.base, shadowIndex);
+    if( slFactor > sLight.edge )
+    {
+        vec4 colour = CalcPointLight(sLight.base, shadowIndex);
 
-		return colour * (1.0f - (1.0f - slFactor)*(1.0f/(1.0f - sLight.edge)));
+        return colour * (1.0f - (1.0f - slFactor)*(1.0f/(1.0f - sLight.edge)));
 
-	} else
-	{
-		return vec4(0, 0, 0, 0);
-	}
+    } else
+    {
+        return vec4(0, 0, 0, 0);
+    }
 }
 
 vec4 CalcPointLights()
@@ -239,17 +271,25 @@ vec4 CalcSpotLights()
 	return totalColour;
 }
 
-void main() 
+vec4 CalcLighting(vec3 normal)
 {
-	vec4 finalColour = CalcDirectionalLight();
-	finalColour += CalcPointLights();
-	finalColour += CalcSpotLights();
+    vec4 finalColour = CalcDirectionalLight();
+    finalColour += CalcPointLights();
+    finalColour += CalcSpotLights();
 
-	//HDR tone mapping
-	finalColour = finalColour / (finalColour + vec4(1.0));
+    // HDR tone mapping
+    finalColour = finalColour / (finalColour + vec4(1.0));
 
-	// Gamma correction
+    // Gamma correction
     finalColour.rgb = pow(finalColour.rgb, vec3(1.0 / gamma));
 
-	colour = texture(theTexture, TexCoord0) * finalColour;
+    return finalColour;
+}
+
+void main() 
+{
+    vec3 tangentSpaceNormal = CalculateTangentSpaceNormal();
+
+    // Iluminação usando a normal do mapa normal
+    colour = texture(theTexture, TexCoord0) * CalcLighting(tangentSpaceNormal);
 }

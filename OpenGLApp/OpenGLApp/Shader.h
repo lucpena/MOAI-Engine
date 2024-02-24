@@ -48,12 +48,23 @@ public:
     void SetPointLights(PointLight *pLight, uint32_t lightCount, uint32_t textureUnit, uint32_t offset);
     void SetSpotLights(SpotLight *sLight, uint32_t lightCount, uint32_t textureUnit, uint32_t offset);
     void SetTexture(GLuint textureUnit);
+    void SetNormalMap(GLuint textureUnit);
     void SetDirectionalShadowMap(GLuint textureUnit);
     void SetDirectionalLightTransform(glm::mat4* lTransform);
     void SetLightMatrices(vector<glm::mat4> lightMatrices);
 
-    void SetInt(const string &name, int value) const;
-    void SetFloat(const std::string &name, float value) const;
+    void setBool(const std::string &name, bool value) const;
+    void setInt(const std::string &name, int value) const;
+    void setFloat(const std::string &name, float value) const;
+    void setVec2(const std::string &name, const glm::vec2 &value) const;
+    void setVec2(const std::string &name, float x, float y) const;
+    void setVec3(const std::string &name, const glm::vec3 &value) const;
+    void setVec3(const std::string &name, float x, float y, float z) const;
+    void setVec4(const std::string &name, const glm::vec4 &value) const;
+    void setVec4(const std::string &name, float x, float y, float z, float w);
+    void setMat2(const std::string &name, const glm::mat2 &mat) const;
+    void setMat3(const std::string &name, const glm::mat3 &mat) const;
+    void setMat4(const std::string &name, const glm::mat4 &mat) const;
 
     void UseShader();
     void ClearShader();
@@ -65,7 +76,7 @@ private:
     GLuint shaderID, uniformProjection, uniformModel, uniformView, 
     uniformEyePosition, uniformSpecularIntensity, uniformShininess,
     uniformDirectionalLightTransform, uniformDirectionalShadowMap,
-    uniformTexture, uniformOmniLightPos, uniformFarPlane;
+    uniformTexture, uniformOmniLightPos, uniformFarPlane, uniformNormalMap;
 
     GLuint uniformLightMatrices[6];
 

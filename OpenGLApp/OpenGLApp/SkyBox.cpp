@@ -26,6 +26,9 @@ SkyBox::SkyBox(vector<string> faceLocations, bool invertedTexture, bool hasAlpha
         stbi_set_flip_vertically_on_load(true);
 
     cerr << endl;
+    cerr << "Loading Skybox..." << endl;
+    cerr << "----------------------------------" << endl;
+
     for (size_t i = 0; i < 6; i++)
     {
         cerr << "Loading Skybox texture: " << faceLocations[i].c_str() << " [" << i + 1 << " of " << 6 << "]..." << endl;
@@ -118,4 +121,5 @@ void SkyBox::DrawSkybox(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 
 SkyBox::~SkyBox()
 {
+
 }

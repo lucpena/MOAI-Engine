@@ -1,7 +1,13 @@
 #include "Model.h"
+#include "Utils.h"
 
 Model::Model()
 {
+    albedoMap = -1;
+    normalMap = -1;
+    metallicMap = -1;
+    roughnessMap = -1;
+    AOMap = -1;
 }
 
 void Model::LoadModel(const string& fileName, const string& objName)
@@ -34,25 +40,30 @@ void Model::LoadModel(const string &fileName, const string &objName, bool invert
     }
 
     LoadNode(scene->mRootNode, scene);
-
     LoadMaterials(scene, objName, invertedTexture);
 }
 
 void Model::RenderModel()
 {
-    for ( size_t i = 0; i < meshList.size(); i++ )
+    for (size_t i = 0; i < meshList.size(); i++)
     {
         uint32_t materialIndex = meshToTex[i];
 
-        if( materialIndex < textureList.size() && textureList[materialIndex])
+        if (materialIndex < textureList.size() && textureList[materialIndex])
         {
             textureList[materialIndex]->UseTexture();
         }
 
+        if (normalMap != -1 && normalList[materialIndex])
+        {
+            normalList[materialIndex]->UseGL_TEXTURE(3);
+            // glActiveTexture(GL_TEXTURE3);
+            // glBindTexture(GL_TEXTURE_2D, normalMap);
+            //glUniform1i(normalMap, 2); // O Normal Map está na unidade de textura 1
+        }
         meshList[i]->RenderMesh();
     }
 }
-
 
 void Model::ClearModel()
 {
@@ -67,11 +78,11 @@ void Model::ClearModel()
 
     for (size_t i = 0; i < textureList.size(); i++)
     {
-        if (textureList[i])
-        {
-            delete textureList[i];
-            textureList[i] = nullptr;
-        }
+       if (textureList[i])
+       {
+           delete textureList[i];
+           textureList[i] = nullptr;
+       }
     }
 }
 
@@ -129,20 +140,29 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene)
     meshToTex.push_back(mesh->mMaterialIndex);
 }
 
+
+
 void Model::LoadMaterials(const aiScene* scene, const string &objName, bool invertedTexture)
 {
+    cerr << "----------------------------------" << endl;
+
+    //textureList.resize(scene->mNumMaterials);
+    //textureList.resize(aiTextureType_UNKNOWN);
+
     textureList.resize(scene->mNumMaterials);
+    normalList.resize(scene->mNumMaterials);
 
-    for( size_t i = 0; i < scene->mNumMaterials; i++ )
+    for (size_t i = 0; i < scene->mNumMaterials; i++)
     {
-        aiMaterial* material = scene->mMaterials[i];
-        
-        textureList[i] = nullptr;
+        aiMaterial *material = scene->mMaterials[i];
 
-        if( material->GetTextureCount(aiTextureType_DIFFUSE) )
+        textureList[i] = nullptr;
+        normalList[i] = nullptr;
+
+        if (material->GetTextureCount(aiTextureType_DIFFUSE))
         {
             aiString path;
-            if( material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS )
+            if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS)
             {
                 // Fixes the path if it is relative
                 int32_t idx = string(path.data).rfind("\\");
@@ -155,22 +175,29 @@ void Model::LoadMaterials(const aiScene* scene, const string &objName, bool inve
                 string fileExtension = string(fileName).substr(extIndex + 1);
 
                 textureList[i] = new Texture(texPath.c_str());
+                // Texture *newTexture = new Texture(texPath.c_str());
+                // textureList.push_back(newTexture);
 
                 cerr << "Loading DIFFUSE " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
-                if (!textureList[i]->LoadTexture(invertedTexture))
+
+                albedoMap = textureList[i]->LoadTextureID(invertedTexture);
+                // albedoMap = newTexture->LoadTextureID(invertedTexture);
+
+                if (albedoMap == -1)
                 {
                     cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
                          << endl;
                     delete textureList[i];
                     textureList[i] = nullptr;
-                }
+                } 
+
             }
         }
 
-        if (material->GetTextureCount(aiTextureType_SPECULAR))
+        if (material->GetTextureCount(aiTextureType_NORMALS)) // NORMAL
         {
             aiString path;
-            if (material->GetTexture(aiTextureType_SPECULAR, 0, &path) == AI_SUCCESS)
+            if (material->GetTexture(aiTextureType_NORMALS, 0, &path) == AI_SUCCESS)
             {
                 // Fixes the path if it is relative
                 int32_t idx = string(path.data).rfind("\\");
@@ -182,82 +209,39 @@ void Model::LoadMaterials(const aiScene* scene, const string &objName, bool inve
                 int32_t extIndex = string(fileName).rfind(".");
                 string fileExtension = string(fileName).substr(extIndex + 1);
 
-                textureList[i] = new Texture(texPath.c_str());
+                normalList[i] = new Texture(texPath.c_str());
+                // Texture *newTexture = new Texture(texPath.c_str());
+                // normalList.push_back(newTexture);
 
-                cerr << "Loading SPECULAR " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
-                if (!textureList[i]->LoadTexture(invertedTexture))
+                cerr << "Loading HEIGHT(NORMAL) " << fileExtension << " texture: " << fileName << " [" << aiTextureType_NORMALS << " of " << scene->mNumMaterials - 1 << "]..." << endl;
+
+                normalMap = normalList[i]->LoadTextureID(invertedTexture);
+                // normalMap = newTexture->LoadTextureID(invertedTexture);
+
+                if (normalMap == -1)
                 {
-                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
+                    cerr << "\n\nERROR: Failed to load NORMAL Texture " << fileName << ".\n"
                          << endl;
-                    delete textureList[i];
-                    textureList[i] = nullptr;
-                }
+                    delete normalList[aiTextureType_NORMALS];
+                    normalList[aiTextureType_NORMALS] = nullptr;
+                } 
             }
-        }
-
-        if (material->GetTextureCount(aiTextureType_HEIGHT)) // NORMAL
-        {
-            aiString path;
-            if (material->GetTexture(aiTextureType_HEIGHT, 0, &path) == AI_SUCCESS)
-            {
-                // Fixes the path if it is relative
-                int32_t idx = string(path.data).rfind("\\");
-                string fileName = string(path.data).substr(idx + 1);
-
-                string texPath = string("Assets/Models/Textures/") + objName + string("/") + fileName;
-
-                // Gettin the file extension
-                int32_t extIndex = string(fileName).rfind(".");
-                string fileExtension = string(fileName).substr(extIndex + 1);
-
-                textureList[i] = new Texture(texPath.c_str());
-
-                cerr << "Loading HEIGHT(NORMAL) " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
-                if (!textureList[i]->LoadTexture(invertedTexture))
-                {
-                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
-                         << endl;
-                    delete textureList[i];
-                    textureList[i] = nullptr;
-                }
-            }
-        }
-
-        if (material->GetTextureCount(aiTextureType_AMBIENT)) // HEIGHT MAP
-        {
-            aiString path;
-            if (material->GetTexture(aiTextureType_AMBIENT, 0, &path) == AI_SUCCESS)
-            {
-                // Fixes the path if it is relative
-                int32_t idx = string(path.data).rfind("\\");
-                string fileName = string(path.data).substr(idx + 1);
-
-                string texPath = string("Assets/Models/Textures/") + objName + string("/") + fileName;
-
-                // Gettin the file extension
-                int32_t extIndex = string(fileName).rfind(".");
-                string fileExtension = string(fileName).substr(extIndex + 1);
-
-                textureList[i] = new Texture(texPath.c_str());
-
-                cerr << "Loading AMBIENT " << fileExtension << " texture: " << fileName << " [" << i << " of " << scene->mNumMaterials - 1 << "]..." << endl;
-                if (!textureList[i]->LoadTexture(invertedTexture))
-                {
-                    cerr << "\n\nERROR: Failed to load DIFFUSE Texture " << fileName << ".\n"
-                         << endl;
-                    delete textureList[i];
-                    textureList[i] = nullptr;
-                }
-            }
-        }
+        }     
 
         // Sets the texture to a plain white if not found
-        if( !textureList[i] )
-        {
-            textureList[i] = new Texture("Assets/Textures/plain.png");
-            textureList[i]->LoadTexture();
-        }
+        // if (!textureList[i])
+        // {
+        //     textureList[i] = new Texture("Assets/Textures/plain.png");
+        //     textureList[i]->LoadTexture();
+        // }
     }
+
+    // cerr << "\tAlbedo map loc: " << albedoMap << endl
+    //      << "\tNormal map loc: " << normalMap << endl
+    //      << "\tMetaless map loc: " << metallicMap << endl
+    //      << "\tRoughness map loc: " << roughnessMap << endl
+    //      << "\tAO map loc: " << AOMap << endl;
+         
 }
 
 Model::~Model()

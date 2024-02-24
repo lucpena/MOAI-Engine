@@ -1,9 +1,5 @@
 #include "Window.h"
 
-using std::cerr;
-using std::cout;
-using std::endl;
-
 Window::Window()
 {
     width = 1280;
@@ -33,13 +29,13 @@ Window::Window(GLint windowWidth, GLint windowHeight)
     yChange = 0.0f;
 }
 
-int Window::Initialise()
+GLFWwindow* Window::Initialise(string windowName)
 {
     if (!glfwInit())
     {
         printf("Error Initialising GLFW");
         glfwTerminate();
-        return 1;
+        return nullptr;
     }
 
     // Setup GLFW Windows Properties
@@ -52,16 +48,20 @@ int Window::Initialise()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
     // MultiSampling Anti Aliasing
-    glfwWindowHint(GLFW_SAMPLES, 1);
+    //glfwWindowHint(GLFW_SAMPLES, 1);
 
     // Create the window
-    mainWindow = glfwCreateWindow(width, height, "MOAI ENGINE", nullptr, nullptr);
+    mainWindow = glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
     if (!mainWindow)
     {
 		cerr << "\n\nERROR: Failed to create WINDOW.\n" << endl;        
         glfwTerminate();
-        return 1;
+        return nullptr;
     }
 
     // Get buffer size information
@@ -83,18 +83,20 @@ int Window::Initialise()
         cerr << "\n\nERROR: Failed to initialize GLEW.\n\n" << endl;
         glfwDestroyWindow(mainWindow);
         glfwTerminate();
-        return -1;
+        return nullptr;
     }
 
     glEnable(GL_DEPTH_TEST);
 
     // Enables MSAA
-    glEnable(GL_MULTISAMPLE);
+    //glEnable(GL_MULTISAMPLE);
 
     // Create Viewport
     glViewport(0, 0, bufferWidth, bufferHeight);
 
     glfwSetWindowUserPointer(mainWindow, this);
+
+    return mainWindow;
 }
 
 void Window::createCallbacks()
